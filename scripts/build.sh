@@ -41,6 +41,10 @@ xcodebuild \
 
 APP="$DERIVED/Build/Products/$CONFIG/DeepSeek.app"
 codesign --verify --deep --strict "$APP"
+# Xcode never updates the bundle folder's own date, and the copies below keep it. Finder,
+# the Dock and Launchpad cache icons by that date, so without this they can go on showing
+# an icon from an older build.
+touch "$APP"
 
 mkdir -p dist
 rm -rf dist/DeepSeek.app
@@ -51,6 +55,8 @@ if [ "$INSTALL" = 1 ]; then
     osascript -e 'quit app id "com.sink7.DeepSeekNative"' >/dev/null 2>&1 || true
     rm -rf /Applications/DeepSeek.app
     ditto --noextattr --noqtn "$APP" /Applications/DeepSeek.app
+    # Re-register so Launchpad and Spotlight pick up the new icon and version.
+    /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/DeepSeek.app
     echo "▸ Installed /Applications/DeepSeek.app"
 fi
 
