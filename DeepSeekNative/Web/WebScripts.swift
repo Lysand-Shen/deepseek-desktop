@@ -64,12 +64,14 @@ enum WebScripts {
 
     /// Injected into the main window's page: hides the whale logo DeepSeek floats at the
     /// top left while the sidebar is collapsed; the title bar already says DeepSeek.
-    /// The selectors are DeepSeek's hashed class names (sidebar, its collapsed state, the
-    /// logo), taken from its stylesheet. If they change, the logo simply shows again.
+    /// The rule targets the floating bar itself rather than the collapsed sidebar, because
+    /// opening the sidebar drops the collapsed state before the bar has faded out.
+    /// The selectors are DeepSeek's hashed class names (the floating bar, the logo), taken
+    /// from its stylesheet. If they change, the logo simply shows again.
     static let mainWindowStyle = """
     (() => {
       const style = document.createElement('style');
-      style.textContent = '.dc04ec1d.a02af2e6 ._6acebc2 { display: none !important; }';
+      style.textContent = '._5a20a69 ._6acebc2 { display: none !important; }';
       (document.head || document.documentElement).appendChild(style);
     })();
     """
