@@ -3,7 +3,7 @@
 #
 #   scripts/build.sh              Release build (universal: Apple Silicon + Intel)
 #   scripts/build.sh --install    …and copy it to /Applications
-#   scripts/build.sh --dmg        …and package dist/DeepSeek.dmg
+#   scripts/build.sh --dmg        …and package dist/DeepSeek-<version>.dmg
 #   scripts/build.sh --debug      Debug build instead of Release
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -55,11 +55,13 @@ if [ "$INSTALL" = 1 ]; then
 fi
 
 if [ "$DMG" = 1 ]; then
+    VERSION="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$APP/Contents/Info.plist")"
+    DMG_PATH="dist/DeepSeek-$VERSION.dmg"
     STAGING="$(mktemp -d)"
     trap 'rm -rf "$STAGING"' EXIT
     ditto --noextattr --noqtn "$APP" "$STAGING/DeepSeek.app"
     ln -s /Applications "$STAGING/Applications"
-    rm -f dist/DeepSeek.dmg
-    hdiutil create -quiet -volname "DeepSeek" -srcfolder "$STAGING" -ov -format UDZO dist/DeepSeek.dmg
-    echo "▸ Packaged dist/DeepSeek.dmg"
+    rm -f "$DMG_PATH"
+    hdiutil create -quiet -volname "DeepSeek" -srcfolder "$STAGING" -ov -format UDZO "$DMG_PATH"
+    echo "▸ Packaged $DMG_PATH ($(du -h "$DMG_PATH" | cut -f1))"
 fi

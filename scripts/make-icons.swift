@@ -1,5 +1,6 @@
 #!/usr/bin/env swift
-// Renders the app icon and the menu bar template icon into the asset catalog.
+// Renders the app icon and the menu bar template icon into the asset catalog from the
+// official DeepSeek logo (deepseek-logo.svg, the favicon of chat.deepseek.com).
 // Usage: swift scripts/make-icons.swift DeepSeekNative/Resources/Assets.xcassets
 import AppKit
 
@@ -8,38 +9,57 @@ guard CommandLine.arguments.count == 2 else {
     exit(1)
 }
 let assets = URL(fileURLWithPath: CommandLine.arguments[1])
+let logoURL = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appending(path: "deepseek-logo.svg")
+let brandBlue = NSColor(srgbRed: 0x4D / 255, green: 0x6B / 255, blue: 0xFE / 255, alpha: 1)
 
-/// Whale silhouette in a 100×100 unit space with y pointing down. Bounds ≈ x 14…98, y 21…77.
-func whalePath() -> NSBezierPath {
-    let p = NSBezierPath()
-    func pt(_ x: CGFloat, _ y: CGFloat) -> NSPoint { NSPoint(x: x, y: y) }
-    p.move(to: pt(14, 60))
-    p.curve(to: pt(42, 35), controlPoint1: pt(14, 44), controlPoint2: pt(26, 35))      // forehead
-    p.curve(to: pt(75, 49), controlPoint1: pt(57, 35), controlPoint2: pt(67, 41))      // back
-    p.curve(to: pt(80, 33), controlPoint1: pt(79, 45), controlPoint2: pt(81, 39))      // tail stock, left edge
-    p.curve(to: pt(69, 20), controlPoint1: pt(75, 31), controlPoint2: pt(71, 26))      // left fluke, lower edge
-    p.curve(to: pt(84, 28), controlPoint1: pt(76, 20), controlPoint2: pt(81, 23))      // left fluke, upper edge
-    p.curve(to: pt(99, 20), controlPoint1: pt(87, 23), controlPoint2: pt(92, 20))      // right fluke, upper edge
-    p.curve(to: pt(88, 33), controlPoint1: pt(97, 26), controlPoint2: pt(93, 31))      // right fluke, lower edge
-    p.curve(to: pt(86, 50), controlPoint1: pt(87, 38), controlPoint2: pt(87, 45))      // tail stock, right edge
-    p.curve(to: pt(50, 76), controlPoint1: pt(83, 64), controlPoint2: pt(71, 76))      // belly
-    p.curve(to: pt(14, 60), controlPoint1: pt(28, 76), controlPoint2: pt(14, 70))      // chin
-    p.close()
-    // Eye, cut out of the body.
-    p.appendOval(in: NSRect(x: 26, y: 50.5, width: 7, height: 7))
-    p.windingRule = .evenOdd
-    return p
+/// Parses the logo's single `<path d="…">` (absolute M/L/C/Z commands) in SVG units, y pointing down.
+func loadLogo() -> NSBezierPath {
+    let svg = try! String(contentsOf: logoURL, encoding: .utf8)
+    let d = String(svg.firstMatch(of: try! Regex(#"\sd="([^"]+)""#))!.output[1].substring!)
+    let tokens = d.matches(of: try! Regex(#"[A-Za-z]|-?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?"#)).map { String(d[$0.range]) }
+    var index = 0
+    func number() -> CGFloat {
+        defer { index += 1 }
+        return CGFloat(Double(tokens[index])!)
+    }
+    func point() -> NSPoint { NSPoint(x: number(), y: number()) }
+
+    let path = NSBezierPath()
+    var command = ""
+    while index < tokens.count {
+        if tokens[index].first!.isLetter {
+            command = tokens[index]
+            index += 1
+        }
+        switch command {
+        case "M":
+            path.move(to: point())
+            command = "L" // Further coordinate pairs are implicit line-tos.
+        case "L":
+            path.line(to: point())
+        case "C":
+            let control1 = point(), control2 = point()
+            path.curve(to: point(), controlPoint1: control1, controlPoint2: control2)
+        case "Z":
+            path.close()
+        default:
+            fatalError("Unsupported SVG path command \(command)")
+        }
+    }
+    path.windingRule = .nonZero // The eye and fin are cut out by opposite winding.
+    return path
 }
+let logo = loadLogo()
 
-/// Maps unit space onto `rect` (y-up), scaling the glyph so its width equals `rect.width`.
-func placedWhale(in rect: NSRect) -> NSBezierPath {
-    let glyphBounds = NSRect(x: 14, y: 20, width: 85, height: 57)
-    let scale = rect.width / glyphBounds.width
+/// The logo scaled to `width` and centred on `center`, flipped into AppKit's y-up space.
+func placedLogo(width: CGFloat, center: NSPoint) -> NSBezierPath {
+    let path = logo.copy() as! NSBezierPath
+    let bounds = path.bounds
+    let scale = width / bounds.width
     let transform = NSAffineTransform()
-    transform.translateX(by: rect.minX, yBy: rect.midY + glyphBounds.height * scale / 2)
+    transform.translateX(by: center.x, yBy: center.y)
     transform.scaleX(by: scale, yBy: -scale)
-    transform.translateX(by: -glyphBounds.minX, yBy: -glyphBounds.minY)
-    let path = whalePath()
+    transform.translateX(by: -bounds.midX, yBy: -bounds.midY)
     path.transform(using: transform as AffineTransform)
     return path
 }
@@ -59,6 +79,7 @@ func render(pixels: Int, draw: (NSRect) -> Void) -> Data {
     return rep.representation(using: .png, properties: [:])!
 }
 
+/// Like DeepSeek's own app icon: the blue whale on a white tile.
 func drawAppIcon(in canvas: NSRect) {
     let unit = canvas.width / 1024
     // macOS icon grid: 824 pt rounded square centred on a 1024 canvas.
@@ -67,48 +88,28 @@ func drawAppIcon(in canvas: NSRect) {
 
     NSGraphicsContext.saveGraphicsState()
     let shadow = NSShadow()
-    shadow.shadowColor = NSColor.black.withAlphaComponent(0.28)
+    shadow.shadowColor = NSColor.black.withAlphaComponent(0.22)
     shadow.shadowBlurRadius = 18 * unit
     shadow.shadowOffset = NSSize(width: 0, height: -8 * unit)
     shadow.set()
-    NSColor(srgbRed: 0.27, green: 0.40, blue: 0.98, alpha: 1).setFill()
+    NSColor.white.setFill()
     tilePath.fill()
     NSGraphicsContext.restoreGraphicsState()
 
+    // A faint cool shade towards the bottom keeps the tile from looking flat.
     let gradient = NSGradient(colors: [
-        NSColor(srgbRed: 0.42, green: 0.55, blue: 1.00, alpha: 1),
-        NSColor(srgbRed: 0.30, green: 0.42, blue: 0.99, alpha: 1),
-        NSColor(srgbRed: 0.20, green: 0.30, blue: 0.86, alpha: 1),
+        NSColor.white,
+        NSColor(srgbRed: 0.94, green: 0.95, blue: 0.99, alpha: 1),
     ])!
     gradient.draw(in: tilePath, angle: -90)
 
-    // Soft highlight across the top half.
-    NSGraphicsContext.saveGraphicsState()
-    tilePath.addClip()
-    let highlight = NSGradient(colors: [NSColor.white.withAlphaComponent(0.16), NSColor.white.withAlphaComponent(0)])!
-    highlight.draw(in: NSRect(x: tile.minX, y: tile.midY, width: tile.width, height: tile.height / 2), angle: -90)
-    NSGraphicsContext.restoreGraphicsState()
-
-    let glyphWidth = 560 * unit
-    let glyphRect = NSRect(x: canvas.midX - glyphWidth / 2 + 8 * unit, y: canvas.midY - 6 * unit - glyphWidth / 2,
-                           width: glyphWidth, height: glyphWidth)
-    let whale = placedWhale(in: glyphRect)
-    NSGraphicsContext.saveGraphicsState()
-    let glyphShadow = NSShadow()
-    glyphShadow.shadowColor = NSColor(srgbRed: 0.05, green: 0.10, blue: 0.40, alpha: 0.35)
-    glyphShadow.shadowBlurRadius = 14 * unit
-    glyphShadow.shadowOffset = NSSize(width: 0, height: -6 * unit)
-    glyphShadow.set()
-    NSColor.white.setFill()
-    whale.fill()
-    NSGraphicsContext.restoreGraphicsState()
+    brandBlue.setFill()
+    placedLogo(width: 520 * unit, center: NSPoint(x: canvas.midX + 6 * unit, y: canvas.midY)).fill()
 }
 
 func drawStatusIcon(in canvas: NSRect) {
-    let inset = canvas.width * 0.04
-    let whale = placedWhale(in: canvas.insetBy(dx: inset, dy: inset))
     NSColor.black.setFill()
-    whale.fill()
+    placedLogo(width: canvas.width * 0.96, center: NSPoint(x: canvas.midX, y: canvas.midY)).fill()
 }
 
 func write(_ data: Data, to url: URL) {
