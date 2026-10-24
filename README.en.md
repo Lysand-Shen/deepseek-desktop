@@ -21,7 +21,7 @@
 
 DeepSeek Native wraps the official web app, [chat.deepseek.com](https://chat.deepseek.com), in a SwiftUI + AppKit shell using the system's WKWebView. Chat, DeepThink, web search and file uploads work exactly as they do on the web. On top of that it adds what a browser tab can't: a quick chat bar like the ChatGPT and Claude desktop apps, a menu bar icon, multiple accounts, float on top, keeping running after the window closes, and an English or Chinese interface you can switch at any time.
 
-- **Light:** Apple frameworks only, no third-party dependencies. The app is 3.3 MB and the DMG about 1.4 MB, universal for Apple Silicon and Intel.
+- **Light:** Apple frameworks only, no third-party dependencies. The app is 3.4 MB and the DMG about 1.4 MB, universal for Apple Silicon and Intel.
 - **Fast:** about 0.8 s from launch to chatting on later launches. The page is created once, so showing and hiding are instant.
 - **No API key:** it doesn't use the DeepSeek API or any undocumented endpoint. You sign in with your normal DeepSeek account.
 
@@ -49,9 +49,10 @@ Requires macOS 14 Sonoma or later.
 - Progress bar, error page and offline banner. The page reloads when the network comes back and recovers if the web content process crashes.
 
 **Quick chat (⌥ Space)**
-- Press **⌥ Space** in any app and a small input bar appears near the top of the screen, without switching away from the app you're in.
-- Type a question and press ↩. The answer appears in a compact window that stays on top, where you can keep asking. ⌥↩ adds a line and ⎋ closes.
-- Press the shortcut again to hide it. In the compact window, New Chat brings back the bar, and Open in Main Window moves the conversation to the main window.
+- Press **⌥ Space** in any app and a pill-shaped input bar appears in the lower part of the screen, without switching away from the app you're in.
+- Type a question and press ↩. Like Gemini's, the bar grows upwards into a compact window that stays on top: the answer appears above, and DeepSeek's message box sits where the bar was, ready for follow-ups. ⌥↩ adds a line and ⎋ closes.
+- Floating buttons at the top close the window, start a new chat (shrinking back into the bar), or open the conversation in the main window. Drag the top of the window to move it.
+- Press the shortcut again to hide it.
 - Quick chat uses a page of its own, so it never interrupts a conversation in the main window. Its chats are saved in your DeepSeek history like any other.
 - Record a different shortcut, or turn it off, in Settings › Shortcut.
 
@@ -161,6 +162,7 @@ State lives in `@MainActor @Observable` classes, built with Swift 6 strict concu
 - The toolbar's New Chat button clicks the page's own "New chat" control and falls back to reloading the home page.
 - Quick chat types the question into the page's message box and presses Return. If a DeepSeek redesign breaks that, the question stays in the compact window's message box to send by hand, and `WebScripts.swift` needs updating.
 - After quick chat has been hidden for 10 minutes, its page is released to save memory, so the next question takes a second or two longer.
+- The quick chat window hides the header of DeepSeek's narrow layout, found by its class name `the-header`. If DeepSeek renames it, the header shows again and everything else keeps working.
 
 ## Disclaimer
 

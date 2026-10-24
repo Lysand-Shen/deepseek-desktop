@@ -158,7 +158,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
     }
 
     @objc func showQuickChat(_ sender: Any?) {
-        quickChat.showEntry()
+        quickChat.showBar()
     }
 
     @objc func reloadPage(_ sender: Any?) { model.reload() }

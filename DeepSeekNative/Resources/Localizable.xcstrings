@@ -287,6 +287,16 @@
         }
       }
     },
+    "Close": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭"
+          }
+        }
+      }
+    },
     "Close Window": {
       "localizations": {
         "zh-Hans": {

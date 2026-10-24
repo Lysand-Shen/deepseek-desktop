@@ -26,6 +26,9 @@ final class QuickChatSession: NSObject, WKNavigationDelegate, WKUIDelegate {
         self.model = model
         let configuration = model.makeAuxiliaryConfiguration()
         configuration.preferences.javaScriptCanOpenWindowsAutomatically = true
+        configuration.userContentController.addUserScript(WKUserScript(
+            source: WebScripts.quickChatStyle, injectionTime: .atDocumentStart, forMainFrameOnly: true
+        ))
         webView = WKWebView(frame: .zero, configuration: configuration)
         super.init()
 

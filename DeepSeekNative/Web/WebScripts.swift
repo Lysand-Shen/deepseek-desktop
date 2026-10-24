@@ -62,6 +62,20 @@ enum WebScripts {
     return isSent() ? 'sent' : 'not-sent';
     """
 
+    /// Injected into quick chat's page: hides the header of DeepSeek's narrow layout, whose
+    /// menu and new-chat buttons the quick chat window provides itself. If the class name
+    /// changes, the header simply shows again.
+    static let quickChatStyle = """
+    (() => {
+      const style = document.createElement('style');
+      style.textContent = `
+        .the-header { display: none !important; }
+        :has(> .the-header:only-child) { display: none !important; }
+      `;
+      (document.head || document.documentElement).appendChild(style);
+    })();
+    """
+
     /// Focuses the chat input unless the user is already typing somewhere else.
     static let focusChatInput = """
     (() => {

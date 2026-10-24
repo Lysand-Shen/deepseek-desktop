@@ -11,7 +11,6 @@
 		0E4519C8FCC21BEA4B98949C /* WebViewDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE5F2274C89A3BD0B71D0D85 /* WebViewDelegate.swift */; };
 		16813873793D7D57B976D673 /* PopupWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8A507921895416DBC8F2B27 /* PopupWindowController.swift */; };
 		1A34913F324BE1B0AAB21701 /* SettingsPanes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38867AA11B1BA1ACCEF56207 /* SettingsPanes.swift */; };
-		284E667D719C71530176438F /* QuickEntryPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B144A78A5ECCC19602F13EC0 /* QuickEntryPanel.swift */; };
 		30C84631801DC076000E5182 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4550EC87A2C4620DB67B4CF6 /* AppDelegate.swift */; };
 		41E5E5A49A8D333BD498A603 /* KeyCombo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80EA5E12493DAEA74259C9F7 /* KeyCombo.swift */; };
 		42144BDE1154F9BA68F67614 /* QuickChatPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD53A2EDE0B5E124E995437 /* QuickChatPanel.swift */; };
@@ -61,7 +60,6 @@
 		A8A507921895416DBC8F2B27 /* PopupWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopupWindowController.swift; sourceTree = "<group>"; };
 		ACD53A2EDE0B5E124E995437 /* QuickChatPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickChatPanel.swift; sourceTree = "<group>"; };
 		AD7ACFBE9FA976BB4591DD9A /* StatusItemController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusItemController.swift; sourceTree = "<group>"; };
-		B144A78A5ECCC19602F13EC0 /* QuickEntryPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickEntryPanel.swift; sourceTree = "<group>"; };
 		BCC23E8938E4A16BAD58DD55 /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
 		BDFFD0FE68B4090F38F00F8B /* MainContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainContentView.swift; sourceTree = "<group>"; };
 		C7F1E4B92B74EDF42C804E44 /* Localizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localizer.swift; sourceTree = "<group>"; };
@@ -165,7 +163,6 @@
 				FE91AA7FD222C581F14AE263 /* QuickChatController.swift */,
 				ACD53A2EDE0B5E124E995437 /* QuickChatPanel.swift */,
 				C9AB50AE911E7805DC9BDBE9 /* QuickChatSession.swift */,
-				B144A78A5ECCC19602F13EC0 /* QuickEntryPanel.swift */,
 			);
 			path = QuickChat;
 			sourceTree = "<group>";
@@ -299,7 +296,6 @@
 				871D0EE825B30C701A77D87A /* QuickChatController.swift in Sources */,
 				42144BDE1154F9BA68F67614 /* QuickChatPanel.swift in Sources */,
 				B88B87089D1C322ECDDF73B2 /* QuickChatSession.swift in Sources */,
-				284E667D719C71530176438F /* QuickEntryPanel.swift in Sources */,
 				1A34913F324BE1B0AAB21701 /* SettingsPanes.swift in Sources */,
 				5B8C3A05C4D1AC06D5818735 /* SettingsWindowController.swift in Sources */,
 				7755FFBEED9E43C1426EBE42 /* StatusItemController.swift in Sources */,
@@ -323,7 +319,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -335,7 +331,7 @@
 					"@executable_path/../Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.sink7.DeepSeekNative;
 				PRODUCT_NAME = DeepSeek;
 				SDKROOT = macosx;
@@ -416,7 +412,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
@@ -429,7 +425,7 @@
 					"@executable_path/../Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.sink7.DeepSeekNative;
 				PRODUCT_NAME = DeepSeek;
 				SDKROOT = macosx;
