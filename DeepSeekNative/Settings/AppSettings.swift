@@ -6,11 +6,11 @@ enum AppearanceMode: String, CaseIterable, Identifiable, Sendable {
 
     var id: String { rawValue }
 
-    var title: String {
+    @MainActor var title: String {
         switch self {
-        case .system: "跟随系统"
-        case .light: "浅色"
-        case .dark: "深色"
+        case .system: L("System")
+        case .light: L("Light")
+        case .dark: L("Dark")
         }
     }
 
@@ -28,10 +28,10 @@ enum SummonPosition: String, CaseIterable, Identifiable, Sendable {
 
     var id: String { rawValue }
 
-    var title: String {
+    @MainActor var title: String {
         switch self {
-        case .remember: "保持上次位置"
-        case .mouseScreenCenter: "鼠标所在屏幕居中"
+        case .remember: L("Where It Was Last")
+        case .mouseScreenCenter: L("Center of the Screen with the Pointer")
         }
     }
 }
@@ -45,7 +45,9 @@ final class AppSettings {
     static let zoomRange: ClosedRange<Double> = 0.5...2.0
 
     private enum Key {
-        static let hotKey = "hotKey"
+        /// Named before quick chat existed, when the one shortcut summoned the main window.
+        static let quickChatHotKey = "hotKey"
+        static let mainWindowHotKey = "mainWindowHotKey"
         static let summonPosition = "summonPosition"
         static let focusInputOnSummon = "focusInputOnSummon"
         static let hideOnDeactivate = "hideOnDeactivate"
@@ -66,15 +68,14 @@ final class AppSettings {
 
     @ObservationIgnored private let defaults: UserDefaults
 
-    /// `nil` means the global shortcut is turned off.
-    var hotKey: KeyCombo? {
-        didSet {
-            if let hotKey, let data = try? JSONEncoder().encode(hotKey) {
-                defaults.set(data, forKey: Key.hotKey)
-            } else {
-                defaults.set(Self.disabledHotKeyMarker, forKey: Key.hotKey)
-            }
-        }
+    /// Opens the quick chat bar. `nil` means the shortcut is turned off.
+    var quickChatHotKey: KeyCombo? {
+        didSet { save(quickChatHotKey, forKey: Key.quickChatHotKey) }
+    }
+
+    /// Shows or hides the main window. Off unless the user records one.
+    var mainWindowHotKey: KeyCombo? {
+        didSet { save(mainWindowHotKey, forKey: Key.mainWindowHotKey) }
     }
 
     var summonPosition: SummonPosition {
@@ -149,14 +150,8 @@ final class AppSettings {
             Key.askDownloadLocation: false,
         ])
 
-        switch defaults.object(forKey: Key.hotKey) {
-        case let data as Data:
-            hotKey = (try? JSONDecoder().decode(KeyCombo.self, from: data)) ?? .defaultSummon
-        case let marker as String where marker == Self.disabledHotKeyMarker:
-            hotKey = nil
-        default:
-            hotKey = .defaultSummon
-        }
+        quickChatHotKey = Self.loadHotKey(Key.quickChatHotKey, from: defaults, default: .defaultSummon)
+        mainWindowHotKey = Self.loadHotKey(Key.mainWindowHotKey, from: defaults, default: nil)
         summonPosition = SummonPosition(rawValue: defaults.string(forKey: Key.summonPosition) ?? "") ?? .remember
         focusInputOnSummon = defaults.bool(forKey: Key.focusInputOnSummon)
         hideOnDeactivate = defaults.bool(forKey: Key.hideOnDeactivate)
@@ -174,6 +169,25 @@ final class AppSettings {
         // besides the shortcut, so never let both be off.
         if !showDockIcon && !showMenuBarIcon { showMenuBarIcon = true }
     }
+
+    private static func loadHotKey(_ key: String, from defaults: UserDefaults, default fallback: KeyCombo?) -> KeyCombo? {
+        switch defaults.object(forKey: key) {
+        case let data as Data:
+            (try? JSONDecoder().decode(KeyCombo.self, from: data)) ?? fallback
+        case let marker as String where marker == disabledHotKeyMarker:
+            nil
+        default:
+            fallback
+        }
+    }
+
+    private func save(_ combo: KeyCombo?, forKey key: String) {
+        if let combo, let data = try? JSONEncoder().encode(combo) {
+            defaults.set(data, forKey: key)
+        } else {
+            defaults.set(Self.disabledHotKeyMarker, forKey: key)
+        }
+    }
 }
 
 /// Runs `apply` now and again every time an observable property it read changes.
@@ -185,4 +199,19 @@ func observeChanges(_ apply: @escaping @MainActor @Sendable () -> Void) {
         // `onChange` fires before the new value is stored; re-run on the next turn.
         Task { @MainActor in observeChanges(apply) }
     }
+}
+
+/// Calls `perform` with `value()` now and whenever an observable property `value` read
+/// changes. Only `value` is tracked, so `perform` may freely change observable state.
+@MainActor
+func observeChanges<Value>(
+    of value: @escaping @MainActor @Sendable () -> Value,
+    perform: @escaping @MainActor @Sendable (Value) -> Void
+) {
+    let current = withObservationTracking {
+        value()
+    } onChange: {
+        Task { @MainActor in observeChanges(of: value, perform: perform) }
+    }
+    perform(current)
 }

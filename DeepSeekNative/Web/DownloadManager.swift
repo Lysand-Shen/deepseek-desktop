@@ -77,7 +77,7 @@ final class DownloadManager: NSObject, WKDownloadDelegate {
         let url = destinations.removeValue(forKey: ObjectIdentifier(download))
         let nsError = error as NSError
         guard !(nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled) else { return }
-        onEvent?(.failed(filename: url?.lastPathComponent ?? "文件", message: error.localizedDescription))
+        onEvent?(.failed(filename: url?.lastPathComponent ?? L("file"), message: error.localizedDescription))
     }
 
     // MARK: Helpers
@@ -87,7 +87,7 @@ final class DownloadManager: NSObject, WKDownloadDelegate {
             .replacingOccurrences(of: "/", with: "-")
             .replacingOccurrences(of: ":", with: "-")
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        return cleaned.isEmpty || cleaned.hasPrefix(".") ? "下载文件" + cleaned : cleaned
+        return cleaned.isEmpty || cleaned.hasPrefix(".") ? L("Download") + cleaned : cleaned
     }
 
     /// `name.ext`, then `name 2.ext`, `name 3.ext`… like Finder.

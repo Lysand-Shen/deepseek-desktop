@@ -1,0 +1,24 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "NSHumanReadableCopyright": {
+      "comment": "Copyright (human-readable)",
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "DeepSeek Native · A native macOS client for DeepSeek’s web app"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DeepSeek Native · 基于 DeepSeek 官方网页版的原生 macOS 客户端"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

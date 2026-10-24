@@ -6,7 +6,12 @@ import WebKit
 /// so several DeepSeek accounts can stay signed in side by side.
 struct Profile: Codable, Identifiable, Hashable, Sendable {
     let id: UUID
+    /// Empty for the account created on first launch, which is named in the current language.
     var name: String
+
+    @MainActor var displayName: String {
+        name.isEmpty ? L("Default Account") : name
+    }
 }
 
 @MainActor
@@ -33,7 +38,11 @@ final class ProfileStore {
         var stored = (defaults.data(forKey: Key.profiles))
             .flatMap { try? JSONDecoder().decode([Profile].self, from: $0) } ?? []
         if stored.isEmpty {
-            stored = [Profile(id: UUID(), name: "默认账户")]
+            stored = [Profile(id: UUID(), name: "")]
+        }
+        // Version 1.0 saved the first account's name in Chinese.
+        for index in stored.indices where stored[index].name == "默认账户" {
+            stored[index].name = ""
         }
         profiles = stored
         let savedID = defaults.string(forKey: Key.currentProfile).flatMap(UUID.init(uuidString:))
@@ -79,8 +88,8 @@ final class ProfileStore {
 
     private func nextDefaultName() -> String {
         var index = profiles.count + 1
-        while profiles.contains(where: { $0.name == "账户 \(index)" }) { index += 1 }
-        return "账户 \(index)"
+        while profiles.contains(where: { $0.displayName == L("Account \(index)") }) { index += 1 }
+        return L("Account \(index)")
     }
 
     private func save() {

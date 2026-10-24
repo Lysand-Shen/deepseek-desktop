@@ -6,6 +6,7 @@
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleLocalizations</key>
 	<array>
+		<string>en</string>
 		<string>zh-Hans</string>
 	</array>
 	<key>CFBundleExecutable</key>
@@ -31,7 +32,7 @@
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.productivity</string>
 	<key>NSHumanReadableCopyright</key>
-	<string>DeepSeek Native · 基于 DeepSeek 官方网页版的原生 macOS 客户端</string>
+	<string>DeepSeek Native · A native macOS client for DeepSeek’s web app</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>NSSupportsAutomaticTermination</key>

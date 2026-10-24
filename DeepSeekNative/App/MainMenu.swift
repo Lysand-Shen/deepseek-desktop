@@ -23,83 +23,83 @@ enum MainMenuBuilder {
 
     private static func appMenu(_ app: AppDelegate) -> NSMenu {
         let menu = NSMenu(title: "DeepSeek")
-        menu.addItem(item("关于 DeepSeek", #selector(AppDelegate.showAbout(_:)), target: app))
+        menu.addItem(item(L("About DeepSeek"), #selector(AppDelegate.showAbout(_:)), target: app))
         menu.addItem(.separator())
-        menu.addItem(item("设置…", #selector(AppDelegate.showSettings(_:)), ",", target: app))
+        menu.addItem(item(L("Settings…"), #selector(AppDelegate.showSettings(_:)), ",", target: app))
         menu.addItem(.separator())
-        let services = NSMenu(title: "服务")
+        let services = NSMenu(title: L("Services"))
         NSApp.servicesMenu = services
-        let servicesItem = NSMenuItem(title: "服务", action: nil, keyEquivalent: "")
+        let servicesItem = NSMenuItem(title: L("Services"), action: nil, keyEquivalent: "")
         servicesItem.submenu = services
         menu.addItem(servicesItem)
         menu.addItem(.separator())
-        menu.addItem(item("隐藏 DeepSeek", #selector(NSApplication.hide(_:)), "h"))
-        menu.addItem(item("隐藏其他", #selector(NSApplication.hideOtherApplications(_:)), "h", [.command, .option]))
-        menu.addItem(item("全部显示", #selector(NSApplication.unhideAllApplications(_:))))
+        menu.addItem(item(L("Hide DeepSeek"), #selector(NSApplication.hide(_:)), "h"))
+        menu.addItem(item(L("Hide Others"), #selector(NSApplication.hideOtherApplications(_:)), "h", [.command, .option]))
+        menu.addItem(item(L("Show All"), #selector(NSApplication.unhideAllApplications(_:))))
         menu.addItem(.separator())
-        menu.addItem(item("退出 DeepSeek", #selector(NSApplication.terminate(_:)), "q"))
+        menu.addItem(item(L("Quit DeepSeek"), #selector(NSApplication.terminate(_:)), "q"))
         return menu
     }
 
     private static func fileMenu(_ app: AppDelegate) -> NSMenu {
-        let menu = NSMenu(title: "文件")
-        menu.addItem(item("新对话", #selector(AppDelegate.newChat(_:)), "n", target: app))
+        let menu = NSMenu(title: L("File"))
+        menu.addItem(item(L("New Chat"), #selector(AppDelegate.newChat(_:)), "n", target: app))
         menu.addItem(.separator())
-        menu.addItem(item("关闭窗口", #selector(NSWindow.performClose(_:)), "w"))
+        menu.addItem(item(L("Close Window"), #selector(NSWindow.performClose(_:)), "w"))
         return menu
     }
 
     private static func editMenu() -> NSMenu {
-        let menu = NSMenu(title: "编辑")
-        menu.addItem(item("撤销", Selector(("undo:")), "z"))
-        menu.addItem(item("重做", Selector(("redo:")), "z", [.command, .shift]))
+        let menu = NSMenu(title: L("Edit"))
+        menu.addItem(item(L("Undo"), Selector(("undo:")), "z"))
+        menu.addItem(item(L("Redo"), Selector(("redo:")), "z", [.command, .shift]))
         menu.addItem(.separator())
-        menu.addItem(item("剪切", #selector(NSText.cut(_:)), "x"))
-        menu.addItem(item("拷贝", #selector(NSText.copy(_:)), "c"))
-        menu.addItem(item("粘贴", #selector(NSText.paste(_:)), "v"))
-        menu.addItem(item("粘贴并匹配样式", #selector(NSTextView.pasteAsPlainText(_:)), "v", [.command, .option, .shift]))
-        menu.addItem(item("删除", #selector(NSText.delete(_:))))
-        menu.addItem(item("全选", #selector(NSText.selectAll(_:)), "a"))
+        menu.addItem(item(L("Cut"), #selector(NSText.cut(_:)), "x"))
+        menu.addItem(item(L("Copy"), #selector(NSText.copy(_:)), "c"))
+        menu.addItem(item(L("Paste"), #selector(NSText.paste(_:)), "v"))
+        menu.addItem(item(L("Paste and Match Style"), #selector(NSTextView.pasteAsPlainText(_:)), "v", [.command, .option, .shift]))
+        menu.addItem(item(L("Delete"), #selector(NSText.delete(_:))))
+        menu.addItem(item(L("Select All"), #selector(NSText.selectAll(_:)), "a"))
         return menu
     }
 
     private static func viewMenu(_ app: AppDelegate) -> NSMenu {
-        let menu = NSMenu(title: "显示")
-        menu.addItem(item("重新载入页面", #selector(AppDelegate.reloadPage(_:)), "r", target: app))
-        menu.addItem(item("强制重新载入", #selector(AppDelegate.reloadIgnoringCache(_:)), "r", [.command, .shift], target: app))
+        let menu = NSMenu(title: L("View"))
+        menu.addItem(item(L("Reload Page"), #selector(AppDelegate.reloadPage(_:)), "r", target: app))
+        menu.addItem(item(L("Reload Ignoring Cache"), #selector(AppDelegate.reloadIgnoringCache(_:)), "r", [.command, .shift], target: app))
         menu.addItem(.separator())
-        menu.addItem(item("实际大小", #selector(AppDelegate.actualSize(_:)), "0", target: app))
-        menu.addItem(item("放大", #selector(AppDelegate.zoomIn(_:)), "+", target: app))
+        menu.addItem(item(L("Actual Size"), #selector(AppDelegate.actualSize(_:)), "0", target: app))
+        menu.addItem(item(L("Zoom In"), #selector(AppDelegate.zoomIn(_:)), "+", target: app))
         // ⌘= is what people actually press for "zoom in" on most layouts.
-        let zoomInAlias = item("放大", #selector(AppDelegate.zoomIn(_:)), "=", target: app)
+        let zoomInAlias = item(L("Zoom In"), #selector(AppDelegate.zoomIn(_:)), "=", target: app)
         zoomInAlias.isHidden = true
         zoomInAlias.allowsKeyEquivalentWhenHidden = true
         menu.addItem(zoomInAlias)
-        menu.addItem(item("缩小", #selector(AppDelegate.zoomOut(_:)), "-", target: app))
+        menu.addItem(item(L("Zoom Out"), #selector(AppDelegate.zoomOut(_:)), "-", target: app))
         menu.addItem(.separator())
-        menu.addItem(item("后退", #selector(AppDelegate.goBack(_:)), "[", target: app))
-        menu.addItem(item("前进", #selector(AppDelegate.goForward(_:)), "]", target: app))
+        menu.addItem(item(L("Back"), #selector(AppDelegate.goBack(_:)), "[", target: app))
+        menu.addItem(item(L("Forward"), #selector(AppDelegate.goForward(_:)), "]", target: app))
         menu.addItem(.separator())
-        menu.addItem(item("进入全屏幕", #selector(NSWindow.toggleFullScreen(_:)), "f", [.command, .control]))
+        menu.addItem(item(L("Enter Full Screen"), #selector(NSWindow.toggleFullScreen(_:)), "f", [.command, .control]))
         return menu
     }
 
     private static func windowMenu(_ app: AppDelegate) -> NSMenu {
-        let menu = NSMenu(title: "窗口")
-        menu.addItem(item("最小化", #selector(NSWindow.performMiniaturize(_:)), "m"))
-        menu.addItem(item("缩放", #selector(NSWindow.performZoom(_:))))
+        let menu = NSMenu(title: L("Window"))
+        menu.addItem(item(L("Minimize"), #selector(NSWindow.performMiniaturize(_:)), "m"))
+        menu.addItem(item(L("Zoom"), #selector(NSWindow.performZoom(_:))))
         menu.addItem(.separator())
-        menu.addItem(item("窗口置顶", #selector(AppDelegate.toggleFloatOnTop(_:)), "t", [.command, .option], target: app))
-        menu.addItem(item("DeepSeek 主窗口", #selector(AppDelegate.showMainWindow(_:)), "1", target: app))
+        menu.addItem(item(L("Float on Top"), #selector(AppDelegate.toggleFloatOnTop(_:)), "t", [.command, .option], target: app))
+        menu.addItem(item(L("Main Window"), #selector(AppDelegate.showMainWindow(_:)), "1", target: app))
         menu.addItem(.separator())
-        menu.addItem(item("前置全部窗口", #selector(NSApplication.arrangeInFront(_:))))
+        menu.addItem(item(L("Bring All to Front"), #selector(NSApplication.arrangeInFront(_:))))
         return menu
     }
 
     private static func helpMenu(_ app: AppDelegate) -> NSMenu {
-        let menu = NSMenu(title: "帮助")
-        menu.addItem(item("在浏览器中打开当前页面", #selector(AppDelegate.openCurrentPageInBrowser(_:)), target: app))
-        menu.addItem(item("DeepSeek 官网", #selector(AppDelegate.openDeepSeekWebsite(_:)), target: app))
+        let menu = NSMenu(title: L("Help"))
+        menu.addItem(item(L("Open Current Page in Browser"), #selector(AppDelegate.openCurrentPageInBrowser(_:)), target: app))
+        menu.addItem(item(L("DeepSeek Website"), #selector(AppDelegate.openDeepSeekWebsite(_:)), target: app))
         return menu
     }
 

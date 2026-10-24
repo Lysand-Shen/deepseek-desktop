@@ -12,11 +12,12 @@ final class SettingsWindowController: NSWindowController {
 
     init(model: WebViewModel, settings: AppSettings, profiles: ProfileStore) {
         tabController.tabStyle = .toolbar
-        tabController.addPane(GeneralSettingsView(settings: settings), label: "通用", symbol: "gearshape", height: 490)
-        tabController.addPane(ShortcutSettingsView(settings: settings), label: "快捷键", symbol: "command", height: 640)
-        tabController.addPane(AccountSettingsView(model: model, profiles: profiles), label: "账户", symbol: "person.2", height: 420)
-        tabController.addPane(WebSettingsView(model: model, settings: settings), label: "网页", symbol: "globe", height: 360)
-        tabController.addPane(AboutSettingsView(), label: "关于", symbol: "info.circle", height: 340)
+        tabController.addPane(GeneralSettingsView(settings: settings), label: { L("General") }, symbol: "gearshape", height: 640)
+        tabController.addPane(ShortcutSettingsView(settings: settings), label: { L("Shortcut") }, symbol: "command", height: 700)
+        tabController.addPane(AccountSettingsView(model: model, profiles: profiles), label: { L("Accounts") }, symbol: "person.2", height: 420)
+        tabController.addPane(WebSettingsView(model: model, settings: settings), label: { L("Web") }, symbol: "globe", height: 360)
+        tabController.addPane(AboutSettingsView(), label: { L("About") }, symbol: "info.circle", height: 340)
+        tabController.observeLabels()
 
         let window = NSWindow(contentViewController: tabController)
         window.styleMask = [.titled, .closable]
@@ -46,16 +47,32 @@ final class SettingsWindowController: NSWindowController {
 private final class SettingsTabViewController: NSTabViewController {
     private static let paneWidth: CGFloat = 540
 
-    func addPane<Content: View>(_ view: Content, label: String, symbol: String, height: CGFloat) {
+    private var labels: [@MainActor () -> String] = []
+
+    func addPane<Content: View>(_ view: Content, label: @escaping @MainActor () -> String, symbol: String, height: CGFloat) {
         let hosting = NSHostingController(rootView: view)
-        // The tab controller propagates the selected child's title to the window.
-        hosting.title = label
         hosting.sizingOptions = []
         hosting.preferredContentSize = NSSize(width: Self.paneWidth, height: height)
         let item = NSTabViewItem(viewController: hosting)
-        item.label = label
-        item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: label)
+        item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
         addTabViewItem(item)
+        labels.append(label)
+    }
+
+    /// Names the tabs now, and again whenever the interface language changes.
+    func observeLabels() {
+        observeChanges { [weak self] in
+            guard let self else { return }
+            for (item, label) in zip(self.tabViewItems, self.labels) {
+                let text = label()
+                item.label = text
+                // The tab controller propagates the selected child's title to the window.
+                item.viewController?.title = text
+            }
+            if let window = self.view.window, let selected = self.tabView.selectedTabViewItem {
+                window.title = selected.label
+            }
+        }
     }
 
     override func tabView(_ tabView: NSTabView, didSelect tabViewItem: NSTabViewItem?) {

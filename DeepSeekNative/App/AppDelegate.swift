@@ -10,27 +10,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
 
     private var model: WebViewModel!
     private var mainWindow: MainWindowController!
+    private var quickChat: QuickChatController!
     private var settingsWindow: SettingsWindowController?
     private var statusItem: StatusItemController?
 
-    private let accountMenu = NSMenu(title: "账户")
-    private let statusAccountMenu = NSMenu(title: "账户")
+    // Rebuilt whenever the interface language changes; a menu can only have one supermenu.
+    private var accountMenu = NSMenu()
+    private var statusAccountMenu = NSMenu()
     private lazy var statusMenu = makeStatusMenu()
-    private weak var statusToggleItem: NSMenuItem?
 
     // MARK: - Lifecycle
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         NSWindow.allowsAutomaticWindowTabbing = false
-        // We provide our own "进入全屏幕" item in the View menu.
+        // We provide our own "Enter Full Screen" item in the View menu.
         UserDefaults.standard.set(false, forKey: "NSFullScreenMenuItemEverywhere")
         NSApp.setActivationPolicy(settings.showDockIcon ? .regular : .accessory)
-        NSApp.mainMenu = MainMenuBuilder.build(for: self, accountMenu: accountMenu)
+        // Builds the menu bar now, and again in the new language when it changes.
+        observeChanges { [weak self] in
+            guard let self else { return }
+            self.accountMenu = NSMenu(title: L("Account"))
+            NSApp.mainMenu = MainMenuBuilder.build(for: self, accountMenu: self.accountMenu)
+        }
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         model = WebViewModel(settings: settings, profiles: profiles)
         mainWindow = MainWindowController(model: model, settings: settings)
+        quickChat = QuickChatController(model: model, profiles: profiles, mainWindow: mainWindow)
         bindSettings()
 
         if !(settings.startHidden && settings.keepRunningInBackground) {
@@ -62,11 +69,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
         }
         observeChanges { [weak self] in self?.applyActivationPolicy() }
         observeChanges { [weak self] in self?.applyStatusItem() }
-        observeChanges { [weak self] in
-            guard let self else { return }
-            HotKeyManager.shared.register(self.settings.hotKey) { [weak self] in
-                self?.toggleMainWindow()
-            }
+        // Registering updates `HotKeyManager.errors`, so only the combos are tracked.
+        observeChanges(of: { [settings] in settings.quickChatHotKey }) { [weak self] combo in
+            HotKeyManager.shared.register(.quickChat, combo: combo) { self?.quickChat.toggle() }
+        }
+        observeChanges(of: { [settings] in settings.mainWindowHotKey }) { [weak self] combo in
+            HotKeyManager.shared.register(.mainWindow, combo: combo) { self?.toggleMainWindow() }
         }
     }
 
@@ -93,7 +101,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
 
     // MARK: - Summoning
 
-    /// Bound to the global shortcut and the menu bar icon.
+    /// Bound to the main window shortcut and the menu bar icon.
     func toggleMainWindow() {
         if let window = mainWindow.window {
             log.info("""
@@ -115,7 +123,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
     @objc func showAbout(_ sender: Any?) {
         NSApp.activate()
         let credits = NSAttributedString(
-            string: "基于 DeepSeek 官方网页版的原生 macOS 客户端。\n使用系统 WebKit，无需 API Key，不收集任何数据。",
+            string: L("A native macOS client for DeepSeek's official web app.\nUses the system's WebKit. No API key needed, and no data collected."),
             attributes: [.font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize), .foregroundColor: NSColor.secondaryLabelColor]
         )
         NSApp.orderFrontStandardAboutPanel(options: [.credits: credits])
@@ -149,6 +157,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
         toggleMainWindow()
     }
 
+    @objc func showQuickChat(_ sender: Any?) {
+        quickChat.showEntry()
+    }
+
     @objc func reloadPage(_ sender: Any?) { model.reload() }
     @objc func reloadIgnoringCache(_ sender: Any?) { model.reloadIgnoringCache() }
     @objc func actualSize(_ sender: Any?) { model.resetZoom() }
@@ -180,10 +192,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
 
     @objc func signOutCurrentAccount(_ sender: Any?) {
         let alert = NSAlert()
-        alert.messageText = "退出“\(profiles.current.name)”？"
-        alert.informativeText = "将删除该账户在本机保存的 Cookie、本地存储与缓存。云端聊天记录不受影响，重新登录后即可看到。"
-        alert.addButton(withTitle: "退出并清除")
-        alert.addButton(withTitle: "取消")
+        alert.messageText = L("Sign out of “\(profiles.current.displayName)”?")
+        alert.informativeText = L("This deletes the account's cookies, local storage and cache on this Mac. Your chats stay in the cloud and come back when you sign in again.")
+        alert.addButton(withTitle: L("Sign Out and Clear"))
+        alert.addButton(withTitle: L("Cancel"))
         alert.buttons.first?.hasDestructiveAction = true
         let confirm: @MainActor (NSApplication.ModalResponse) -> Void = { [weak self] response in
             guard response == .alertFirstButtonReturn, let self else { return }
@@ -225,45 +237,52 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
         } else if menu === statusAccountMenu {
             populateAccountMenu(menu, includeDataActions: false)
         } else if menu === statusMenu {
-            let shortcut = settings.hotKey.map { "（\($0.displayString)）" } ?? ""
-            statusToggleItem?.title = "显示 / 隐藏 DeepSeek\(shortcut)"
+            populateStatusMenu(menu)
         }
     }
 
     private func populateAccountMenu(_ menu: NSMenu, includeDataActions: Bool) {
         menu.removeAllItems()
         for profile in profiles.profiles {
-            let item = MainMenuBuilder.item(profile.name, #selector(switchAccount(_:)), target: self)
+            let item = MainMenuBuilder.item(profile.displayName, #selector(switchAccount(_:)), target: self)
             item.representedObject = profile.id
             item.state = profile.id == profiles.currentID ? .on : .off
             menu.addItem(item)
         }
         menu.addItem(.separator())
-        menu.addItem(MainMenuBuilder.item("添加账户", #selector(addAccount(_:)), target: self))
-        menu.addItem(MainMenuBuilder.item("管理账户…", #selector(manageAccounts(_:)), target: self))
+        menu.addItem(MainMenuBuilder.item(L("Add Account"), #selector(addAccount(_:)), target: self))
+        menu.addItem(MainMenuBuilder.item(L("Manage Accounts…"), #selector(manageAccounts(_:)), target: self))
         guard includeDataActions else { return }
         menu.addItem(.separator())
-        menu.addItem(MainMenuBuilder.item("清除缓存", #selector(clearCache(_:)), target: self))
-        menu.addItem(MainMenuBuilder.item("退出当前账户…", #selector(signOutCurrentAccount(_:)), target: self))
+        menu.addItem(MainMenuBuilder.item(L("Clear Cache"), #selector(clearCache(_:)), target: self))
+        menu.addItem(MainMenuBuilder.item(L("Sign Out of Current Account…"), #selector(signOutCurrentAccount(_:)), target: self))
     }
 
     private func makeStatusMenu() -> NSMenu {
         let menu = NSMenu()
         menu.delegate = self
-        let toggle = MainMenuBuilder.item("显示 / 隐藏 DeepSeek", #selector(toggleFromStatusMenu(_:)), target: self)
-        statusToggleItem = toggle
-        menu.addItem(toggle)
-        menu.addItem(MainMenuBuilder.item("新对话", #selector(newChat(_:)), target: self))
+        populateStatusMenu(menu)
+        return menu
+    }
+
+    /// Filled in each time the menu opens, so it's always in the current language.
+    private func populateStatusMenu(_ menu: NSMenu) {
+        menu.removeAllItems()
+        let quickTitle = settings.quickChatHotKey.map { L("Quick Chat (\($0.displayString))") } ?? L("Quick Chat")
+        menu.addItem(MainMenuBuilder.item(quickTitle, #selector(showQuickChat(_:)), target: self))
+        let toggleTitle = settings.mainWindowHotKey.map { L("Show or Hide DeepSeek (\($0.displayString))") } ?? L("Show or Hide DeepSeek")
+        menu.addItem(MainMenuBuilder.item(toggleTitle, #selector(toggleFromStatusMenu(_:)), target: self))
+        menu.addItem(MainMenuBuilder.item(L("New Chat"), #selector(newChat(_:)), target: self))
         menu.addItem(.separator())
-        menu.addItem(MainMenuBuilder.item("窗口置顶", #selector(toggleFloatOnTop(_:)), target: self))
+        menu.addItem(MainMenuBuilder.item(L("Float on Top"), #selector(toggleFloatOnTop(_:)), target: self))
+        statusAccountMenu = NSMenu(title: L("Account"))
         statusAccountMenu.delegate = self
-        let accounts = NSMenuItem(title: "账户", action: nil, keyEquivalent: "")
+        let accounts = NSMenuItem(title: statusAccountMenu.title, action: nil, keyEquivalent: "")
         accounts.submenu = statusAccountMenu
         menu.addItem(accounts)
         menu.addItem(.separator())
-        menu.addItem(MainMenuBuilder.item("设置…", #selector(showSettings(_:)), target: self))
+        menu.addItem(MainMenuBuilder.item(L("Settings…"), #selector(showSettings(_:)), target: self))
         menu.addItem(.separator())
-        menu.addItem(MainMenuBuilder.item("退出 DeepSeek", #selector(NSApplication.terminate(_:)), target: NSApp))
-        return menu
+        menu.addItem(MainMenuBuilder.item(L("Quit DeepSeek"), #selector(NSApplication.terminate(_:)), target: NSApp))
     }
 }

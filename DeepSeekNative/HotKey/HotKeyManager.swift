@@ -3,61 +3,92 @@ import Carbon.HIToolbox
 import Observation
 import os
 
-/// 'DSNK' — tags our hot key so the handler ignores anyone else's.
+/// 'DSNK' — tags our hot keys so the handler ignores anyone else's.
 private let hotKeySignature: OSType = 0x4453_4E4B
 private let log = Logger(subsystem: "com.sink7.DeepSeekNative", category: "HotKey")
 
-/// Registers one system-wide shortcut through the Carbon hot key API. Unlike a global
+/// Registers system-wide shortcuts through the Carbon hot key API. Unlike a global
 /// `NSEvent` monitor, this needs no Accessibility permission and the key press is consumed.
 @MainActor
 @Observable
 final class HotKeyManager {
     static let shared = HotKeyManager()
 
-    /// Shown in Settings when registration fails, e.g. because another app owns the combo.
-    private(set) var registrationError: String?
+    enum Shortcut: UInt32, CaseIterable {
+        case quickChat = 1
+        case mainWindow = 2
+    }
 
-    /// While true the shortcut is unregistered, so the recorder can capture any combo,
-    /// including the one currently in use.
+    enum RegistrationError: Equatable {
+        /// Another app, macOS, or our other shortcut already registered the combo.
+        case taken(KeyCombo)
+        case failed(OSStatus)
+
+        @MainActor var message: String {
+            switch self {
+            case .taken(let combo): L("“\(combo.displayString)” is already used by macOS or another app. Choose a different shortcut.")
+            case .failed(let status): L("Couldn't register the global shortcut (error \(String(status))).")
+            }
+        }
+    }
+
+    /// Shown in Settings when registration fails, e.g. because another app owns the combo.
+    private(set) var errors: [Shortcut: RegistrationError] = [:]
+
+    /// While true the shortcuts are unregistered, so the recorder can capture any combo,
+    /// including one currently in use.
     var isSuspended = false {
         didSet { if isSuspended != oldValue { refresh() } }
     }
 
-    @ObservationIgnored private var combo: KeyCombo?
-    @ObservationIgnored private var action: (@MainActor () -> Void)?
-    @ObservationIgnored private var hotKeyRef: EventHotKeyRef?
-    @ObservationIgnored private var handlerRef: EventHandlerRef?
-
-    func register(_ combo: KeyCombo?, action: @escaping @MainActor () -> Void) {
-        self.combo = combo
-        self.action = action
-        refresh()
+    private struct Binding {
+        var combo: KeyCombo?
+        var action: @MainActor () -> Void
+        var ref: EventHotKeyRef?
     }
 
-    fileprivate func handlePress() {
-        log.info("Hot key pressed")
-        action?()
+    @ObservationIgnored private var bindings: [Shortcut: Binding] = [:]
+    @ObservationIgnored private var handlerRef: EventHandlerRef?
+
+    func register(_ shortcut: Shortcut, combo: KeyCombo?, action: @escaping @MainActor () -> Void) {
+        unregister(shortcut)
+        bindings[shortcut] = Binding(combo: combo, action: action)
+        errors[shortcut] = nil
+        if !isSuspended { activate(shortcut) }
+    }
+
+    fileprivate func handlePress(_ id: UInt32) {
+        guard let shortcut = Shortcut(rawValue: id) else { return }
+        log.info("Hot key pressed: \(String(describing: shortcut), privacy: .public)")
+        bindings[shortcut]?.action()
     }
 
     private func refresh() {
-        if let hotKeyRef {
-            UnregisterEventHotKey(hotKeyRef)
-            self.hotKeyRef = nil
-        }
-        registrationError = nil
-        guard let combo, !isSuspended else { return }
+        for shortcut in Shortcut.allCases { unregister(shortcut) }
+        errors = [:]
+        guard !isSuspended else { return }
+        for shortcut in Shortcut.allCases { activate(shortcut) }
+    }
 
+    private func unregister(_ shortcut: Shortcut) {
+        guard let ref = bindings[shortcut]?.ref else { return }
+        UnregisterEventHotKey(ref)
+        bindings[shortcut]?.ref = nil
+    }
+
+    private func activate(_ shortcut: Shortcut) {
+        guard let combo = bindings[shortcut]?.combo else { return }
         installHandlerIfNeeded()
         var ref: EventHotKeyRef?
-        let id = EventHotKeyID(signature: hotKeySignature, id: 1)
+        let id = EventHotKeyID(signature: hotKeySignature, id: shortcut.rawValue)
         let status = RegisterEventHotKey(combo.keyCode, combo.carbonModifiers, id, GetEventDispatcherTarget(), 0, &ref)
         if status == noErr, let ref {
-            hotKeyRef = ref
-            log.info("Registered hot key \(combo.displayString, privacy: .public)")
+            bindings[shortcut]?.ref = ref
+            log.info("Registered hot key \(String(describing: shortcut), privacy: .public): \(combo.displayString, privacy: .public)")
         } else if status == OSStatus(eventHotKeyExistsErr) {
-            registrationError = "“\(combo.displayString)” 已被系统或其他应用占用，请换一个组合。"
+            errors[shortcut] = .taken(combo)
         } else {
-            registrationError = "无法注册全局快捷键（错误码 \(status)）。"
+            errors[shortcut] = .failed(status)
         }
     }
 
@@ -77,8 +108,9 @@ private func hotKeyEventHandler(_: EventHandlerCallRef?, event: EventRef?, _: Un
         nil, MemoryLayout<EventHotKeyID>.size, nil, &id
     )
     guard status == noErr, id.signature == hotKeySignature else { return OSStatus(eventNotHandledErr) }
+    let hotKeyID = id.id
     MainActor.assumeIsolated {
-        HotKeyManager.shared.handlePress()
+        HotKeyManager.shared.handlePress(hotKeyID)
     }
     return noErr
 }

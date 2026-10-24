@@ -5,7 +5,7 @@
 <h1 align="center">DeepSeek Native</h1>
 
 <p align="center">
-  A lightweight native macOS client for DeepSeek. Summon it from anywhere with <b>⌥ Space</b>. 1.2 MB download, no Electron.
+  A lightweight native macOS client for DeepSeek. Ask from any app with <b>⌥ Space</b>. 1.4 MB download, no Electron.
 </p>
 
 <p align="center">
@@ -19,13 +19,11 @@
 
 ---
 
-DeepSeek Native wraps the official web app, [chat.deepseek.com](https://chat.deepseek.com), in a SwiftUI + AppKit shell using the system's WKWebView. Chat, DeepThink, web search and file uploads work exactly as they do on the web. On top of that it adds what a browser tab can't: a global hotkey, a menu bar icon, multiple accounts, float on top, and keeping running after the window closes.
+DeepSeek Native wraps the official web app, [chat.deepseek.com](https://chat.deepseek.com), in a SwiftUI + AppKit shell using the system's WKWebView. Chat, DeepThink, web search and file uploads work exactly as they do on the web. On top of that it adds what a browser tab can't: a quick chat bar like the ChatGPT and Claude desktop apps, a menu bar icon, multiple accounts, float on top, keeping running after the window closes, and an English or Chinese interface you can switch at any time.
 
-- **Light:** Apple frameworks only, no third-party dependencies. The app is 2.6 MB and the DMG about 1.2 MB, universal for Apple Silicon and Intel.
+- **Light:** Apple frameworks only, no third-party dependencies. The app is 3.3 MB and the DMG about 1.4 MB, universal for Apple Silicon and Intel.
 - **Fast:** about 0.8 s from launch to chatting on later launches. The page is created once, so showing and hiding are instant.
 - **No API key:** it doesn't use the DeepSeek API or any undocumented endpoint. You sign in with your normal DeepSeek account.
-
-The app's menus and settings are in Simplified Chinese.
 
 ## Install
 
@@ -50,12 +48,18 @@ Requires macOS 14 Sonoma or later.
 - External links open in your default browser. Google, Apple and WeChat sign-in finish in an in-app popup.
 - Progress bar, error page and offline banner. The page reloads when the network comes back and recovers if the web content process crashes.
 
-**Global hotkey**
-- **⌥ Space** by default: brings DeepSeek up over any app, and pressing it again hides it and returns to where you were.
-- Record a different shortcut, or turn it off, in Settings › 快捷键 (Shortcut).
-- Summon to the window's last position or to the center of the screen with the mouse. The window follows you to the current Space.
-- The chat input gets focus on summon. Optionally hide when you switch to another app.
-- Built on Carbon `RegisterEventHotKey`, so it needs no Accessibility permission.
+**Quick chat (⌥ Space)**
+- Press **⌥ Space** in any app and a small input bar appears near the top of the screen, without switching away from the app you're in.
+- Type a question and press ↩. The answer appears in a compact window that stays on top, where you can keep asking. ⌥↩ adds a line and ⎋ closes.
+- Press the shortcut again to hide it. In the compact window, New Chat brings back the bar, and Open in Main Window moves the conversation to the main window.
+- Quick chat uses a page of its own, so it never interrupts a conversation in the main window. Its chats are saved in your DeepSeek history like any other.
+- Record a different shortcut, or turn it off, in Settings › Shortcut.
+
+**Main window shortcut**
+- Optionally set a second global shortcut that shows or hides the full main window. It's off by default.
+- Summon to the window's last position or to the center of the screen with the pointer. The window follows you to the current Space.
+- The message box gets focus on summon. Optionally hide when you switch to another app.
+- Global shortcuts use Carbon `RegisterEventHotKey`, so they need no Accessibility permission.
 
 **Native window**
 - The toolbar takes on the page's background color in both light and dark mode, and shows the conversation title.
@@ -68,12 +72,14 @@ Requires macOS 14 Sonoma or later.
 - Menu bar icon: click to show or hide the window, right-click for a menu.
 - Multiple accounts, each with its own data store, so several stay signed in and you can switch any time.
 - Launch at login, and an option to hide the Dock icon.
+- English and Simplified Chinese interface. It follows the system by default, or pick one in Settings › General › Language. Menus, Settings and dialogs switch right away; menu items provided by macOS and the default language of DeepSeek's page switch after a restart.
 
 ## Keyboard shortcuts
 
 | Shortcut | Action |
 | --- | --- |
-| ⌥ Space | Show or hide the window (global, customizable) |
+| ⌥ Space | Quick chat: show or hide the input bar (global, customizable) |
+| Your choice | Show or hide the main window (global, off by default) |
 | ⌘ N | New chat |
 | ⌘ R / ⇧ ⌘ R | Reload / reload ignoring cache |
 | ⌘ + / ⌘ − / ⌘ 0 | Zoom in / zoom out / actual size |
@@ -87,7 +93,13 @@ Requires macOS 14 Sonoma or later.
 ## FAQ
 
 **⌥ Space does nothing.**
-Another app probably uses the same shortcut, for example Alfred, Raycast, ChatGPT or Claude's Quick Entry. Then only one app may respond, or both may. Pick a different shortcut in Settings › 快捷键, or change the other app's.
+Another app probably uses the same shortcut, for example Alfred, Raycast, ChatGPT or Claude's Quick Entry. Then only one app may respond, or both may. Pick a different shortcut in Settings › Shortcut, or change the other app's.
+
+**How does quick chat send my question?**
+The same way you would: the compact window opens DeepSeek's web page, types your question into the page's message box and presses Return. No API and no undocumented endpoints. DeepThink and Search stay as you last set them on the page.
+
+**How do I switch the interface to Chinese (or English)?**
+Open Settings › General › Language. With System, the interface is Chinese when your Mac's preferred language is Chinese, and English otherwise.
 
 **Where is my data, and is any of it sent anywhere?**
 WebKit keeps sign-in and site data on your Mac in `~/Library/WebKit/com.sink7.DeepSeekNative`. The app collects nothing and makes no network requests of its own beyond WebKit loading DeepSeek's site. The source is all here to check.
@@ -122,13 +134,18 @@ The Xcode project is generated from `project.yml` by [XcodeGen](https://github.c
 swift scripts/make-icons.swift DeepSeekNative/Resources/Assets.xcassets
 ```
 
+Interface text lives in the String Catalog `DeepSeekNative/Resources/Localizable.xcstrings`, with English as the source language and a Simplified Chinese translation. Code looks strings up with `L("…")`, which refreshes the interface when the language changes. To add a language, add it to that file in Xcode, then add its code to `AppLanguage` in `Localizer.swift` and to `CFBundleLocalizations` in `Info.plist`.
+
 ### Layout
 
 ```
 DeepSeekNative/
   App/          main.swift, AppDelegate (lifecycle, menu actions, summoning), MainMenu
-  Settings/     AppSettings (UserDefaults), ProfileStore (accounts), LaunchAtLogin
-  HotKey/       KeyCombo, HotKeyManager (Carbon global hotkey)
+  Settings/     AppSettings (UserDefaults), ProfileStore (accounts), LaunchAtLogin,
+                Localizer (interface language, switched at runtime)
+  HotKey/       KeyCombo, HotKeyManager (Carbon global hotkeys)
+  QuickChat/    QuickChatController, QuickEntryPanel (input bar), QuickChatPanel (compact window),
+                QuickChatSession (the compact window's own page)
   Web/          WebViewModel (WKWebView and its state), WebViewDelegate, LinkPolicy,
                 DownloadManager, WebDialogs, NetworkMonitor, WebScripts
   Window/       MainWindowController (window and toolbar), PopupWindowController, StatusItemController
@@ -141,7 +158,9 @@ State lives in `@MainActor @Observable` classes, built with Swift 6 strict concu
 
 - The app is ad-hoc signed and not notarized, so it has to be allowed once on first launch (see Install).
 - App Sandbox is off, because with ad-hoc signing every rebuild would trigger sandbox container prompts. Hardened Runtime is on, and web content runs in WebKit's own sandboxed processes.
-- The toolbar's New Chat button clicks the page's own "New chat" control and falls back to reloading the home page. A DeepSeek redesign may require updating `WebScripts.swift`.
+- The toolbar's New Chat button clicks the page's own "New chat" control and falls back to reloading the home page.
+- Quick chat types the question into the page's message box and presses Return. If a DeepSeek redesign breaks that, the question stays in the compact window's message box to send by hand, and `WebScripts.swift` needs updating.
+- After quick chat has been hidden for 10 minutes, its page is released to save memory, so the next question takes a second or two longer.
 
 ## Disclaimer
 

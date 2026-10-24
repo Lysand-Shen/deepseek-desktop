@@ -7,7 +7,7 @@ struct KeyRecorder: View {
 
     @State private var isRecording = false
     @State private var monitor: Any?
-    @State private var hint: String?
+    @State private var showsModifierHint = false
 
     var body: some View {
         VStack(alignment: .trailing, spacing: 4) {
@@ -15,20 +15,20 @@ struct KeyRecorder: View {
                 Button(action: toggleRecording) {
                     HStack(spacing: 3) {
                         if isRecording {
-                            Text("请按下快捷键…")
+                            Text(L("Press a shortcut…"))
                                 .foregroundStyle(.secondary)
                         } else if let combo {
                             ForEach(Array(combo.displayParts.enumerated()), id: \.offset) { _, part in
                                 KeyCap(part)
                             }
                         } else {
-                            Text("未设置")
+                            Text(L("None"))
                                 .foregroundStyle(.secondary)
                         }
                     }
                     .frame(minWidth: 128, minHeight: 20)
                 }
-                .help(isRecording ? "按 ⎋ 取消，按 ⌫ 停用快捷键" : "点按以录制新的快捷键")
+                .help(isRecording ? L("Press ⎋ to cancel, or ⌫ to turn the shortcut off") : L("Click to record a new shortcut"))
 
                 if combo != nil, !isRecording {
                     Button {
@@ -38,11 +38,11 @@ struct KeyRecorder: View {
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
-                    .help("停用全局快捷键")
+                    .help(L("Turn off this shortcut"))
                 }
             }
-            if let hint {
-                Text(hint)
+            if showsModifierHint {
+                Text(L("Include at least one of ⌘, ⌥ or ⌃"))
                     .font(.caption)
                     .foregroundStyle(.orange)
             }
@@ -55,7 +55,7 @@ struct KeyRecorder: View {
     }
 
     private func startRecording() {
-        hint = nil
+        showsModifierHint = false
         isRecording = true
         // Release the current shortcut so pressing it again can be recorded.
         HotKeyManager.shared.isSuspended = true
@@ -87,11 +87,11 @@ struct KeyRecorder: View {
             break
         }
         guard let recorded = KeyCombo(event: event) else {
-            hint = "请至少包含 ⌘、⌥ 或 ⌃ 中的一个修饰键"
+            showsModifierHint = true
             NSSound.beep()
             return
         }
-        hint = nil
+        showsModifierHint = false
         combo = recorded
         stopRecording()
     }

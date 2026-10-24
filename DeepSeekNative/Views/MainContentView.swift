@@ -113,13 +113,13 @@ private struct ErrorStateView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 380)
-            Button("重新加载", action: retry)
+            Button(L("Try Again"), action: retry)
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
                 .keyboardShortcut(.defaultAction)
                 .padding(.top, 8)
             if isOffline {
-                Label("正在等待网络恢复…", systemImage: "antenna.radiowaves.left.and.right")
+                Label(L("Waiting for the network…"), systemImage: "antenna.radiowaves.left.and.right")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
                     .padding(.top, 2)
@@ -132,7 +132,7 @@ private struct ErrorStateView: View {
 
 private struct OfflineBanner: View {
     var body: some View {
-        Label("网络连接已断开，恢复后会自动重连", systemImage: "wifi.slash")
+        Label(L("You're offline. DeepSeek reconnects automatically."), systemImage: "wifi.slash")
             .font(.callout.weight(.medium))
             .padding(.horizontal, 14)
             .padding(.vertical, 7)
@@ -153,7 +153,7 @@ private struct ToastView: View {
             Text(toast.message)
                 .lineLimit(2)
             if let url = toast.revealURL {
-                Button("在 Finder 中显示") {
+                Button(L("Show in Finder")) {
                     NSWorkspace.shared.activateFileViewerSelecting([url])
                     dismiss()
                 }

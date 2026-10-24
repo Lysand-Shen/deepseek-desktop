@@ -147,4 +147,15 @@ writeJSON([
     "properties": ["template-rendering-intent": "template"],
 ], to: statusDir.appending(path: "Contents.json"))
 
+// Whale glyph (template) for the quick chat bar, drawn larger than the menu bar icon.
+let glyphDir = assets.appending(path: "WhaleGlyph.imageset")
+for (scale, pixels) in [(1, 24), (2, 48), (3, 72)] {
+    write(render(pixels: pixels, draw: drawStatusIcon), to: glyphDir.appending(path: "whale@\(scale)x.png"))
+}
+writeJSON([
+    "images": [1, 2, 3].map { ["filename": "whale@\($0)x.png", "idiom": "universal", "scale": "\($0)x"] },
+    "info": ["author": "xcode", "version": 1],
+    "properties": ["template-rendering-intent": "template"],
+], to: glyphDir.appending(path: "Contents.json"))
+
 print("Icons written to \(assets.path)")

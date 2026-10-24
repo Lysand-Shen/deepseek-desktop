@@ -41,7 +41,7 @@ final class PopupWindowController: NSWindowController, NSWindowDelegate, WKNavig
         )
         window.isReleasedWhenClosed = false
         window.tabbingMode = .disallowed
-        window.title = mode == .browser ? "正在载入…" : "登录"
+        window.title = mode == .browser ? L("Loading…") : L("Sign In")
         window.contentView = webView
         super.init(window: window)
 

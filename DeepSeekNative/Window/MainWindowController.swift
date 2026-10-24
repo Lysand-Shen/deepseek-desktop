@@ -17,7 +17,10 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     private let model: WebViewModel
     private let settings: AppSettings
     private let titleField = NSTextField(labelWithString: "DeepSeek")
-    private lazy var pinItem = makeButtonItem(.pin, symbol: "pin", label: "置顶", action: #selector(togglePin(_:)))
+    private lazy var newChatItem = makeButtonItem(.newChat, symbol: "square.and.pencil", action: #selector(newChat(_:)))
+    private lazy var reloadItem = makeButtonItem(.reload, symbol: "arrow.clockwise", action: #selector(reload(_:)))
+    private lazy var pinItem = makeButtonItem(.pin, symbol: "pin", action: #selector(togglePin(_:)))
+    private lazy var titleItem = NSToolbarItem(itemIdentifier: .conversationTitle)
     private var appearanceObservation: NSKeyValueObservation?
 
     init(model: WebViewModel, settings: AppSettings) {
@@ -123,6 +126,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
 
     private func bindState() {
         observeChanges { [weak self] in self?.applyFloating() }
+        observeChanges { [weak self] in self?.applyToolbarText() }
         observeChanges { [weak self] in self?.applyTitle() }
         observeChanges { [weak self] in self?.applyChromeColor() }
         appearanceObservation = NSApp.observe(\.effectiveAppearance) { [weak self] _, _ in
@@ -133,8 +137,18 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     private func applyFloating() {
         let floating = settings.floatOnTop
         window?.level = floating ? .floating : .normal
-        pinItem.image = NSImage(systemSymbolName: floating ? "pin.fill" : "pin", accessibilityDescription: "窗口置顶")
-        pinItem.toolTip = floating ? "取消窗口置顶（⌥⌘T）" : "窗口置顶（⌥⌘T）"
+        pinItem.image = NSImage(systemSymbolName: floating ? "pin.fill" : "pin", accessibilityDescription: L("Float on Top"))
+        pinItem.toolTip = floating ? L("Stop Floating on Top (⌥⌘T)") : L("Float on Top (⌥⌘T)")
+    }
+
+    private func applyToolbarText() {
+        for (item, label) in [(newChatItem, L("New Chat")), (reloadItem, L("Reload")), (pinItem, L("Float on Top"))] {
+            item.label = label
+            item.paletteLabel = label
+        }
+        newChatItem.toolTip = L("New Chat (⌘N)")
+        reloadItem.toolTip = L("Reload (⌘R)")
+        titleItem.label = L("Title")
     }
 
     private func applyTitle() {
@@ -143,19 +157,8 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         window?.title = title
     }
 
-    /// Paints the title bar with the page's background so toolbar and page read as one
-    /// surface — but only when that colour suits the current appearance, so the toolbar
-    /// icons keep their contrast.
     private func applyChromeColor() {
-        guard let window else { return }
-        let pageColor = model.pageBackgroundColor
-        let isDarkAppearance = window.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
-        guard let color = pageColor?.usingColorSpace(.sRGB), color.alphaComponent > 0.99 else {
-            window.backgroundColor = .windowBackgroundColor
-            return
-        }
-        let luminance = 0.2126 * color.redComponent + 0.7152 * color.greenComponent + 0.0722 * color.blueComponent
-        window.backgroundColor = (luminance < 0.5) == isDarkAppearance ? color : .windowBackgroundColor
+        window?.matchTitlebar(to: model.pageBackgroundColor)
     }
 
     // MARK: - Toolbar
@@ -183,18 +186,13 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     ) -> NSToolbarItem? {
         switch itemIdentifier {
         case .newChat:
-            let item = makeButtonItem(.newChat, symbol: "square.and.pencil", label: "新对话", action: #selector(newChat(_:)))
-            item.toolTip = "新对话（⌘N）"
-            return item
+            return newChatItem
         case .reload:
-            let item = makeButtonItem(.reload, symbol: "arrow.clockwise", label: "重新载入", action: #selector(reload(_:)))
-            item.toolTip = "重新载入（⌘R）"
-            return item
+            return reloadItem
         case .pin:
-            applyFloating()
             return pinItem
         case .conversationTitle:
-            let item = NSToolbarItem(itemIdentifier: itemIdentifier)
+            let item = titleItem
             titleField.font = .systemFont(ofSize: NSFont.systemFontSize, weight: .semibold)
             titleField.textColor = .labelColor
             titleField.alignment = .center
@@ -203,7 +201,6 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
             titleField.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
             titleField.widthAnchor.constraint(lessThanOrEqualToConstant: 440).isActive = true
             item.view = titleField
-            item.label = "标题"
             item.visibilityPriority = .low
             return item
         default:
@@ -211,13 +208,10 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         }
     }
 
-    private func makeButtonItem(
-        _ identifier: NSToolbarItem.Identifier, symbol: String, label: String, action: Selector
-    ) -> NSToolbarItem {
+    /// Labels and tooltips are set by `applyToolbarText()`, in the current language.
+    private func makeButtonItem(_ identifier: NSToolbarItem.Identifier, symbol: String, action: Selector) -> NSToolbarItem {
         let item = NSToolbarItem(itemIdentifier: identifier)
-        item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: label)
-        item.label = label
-        item.paletteLabel = label
+        item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
         item.target = self
         item.action = action
         item.isBordered = true
@@ -236,5 +230,20 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
 
     @objc private func togglePin(_ sender: Any?) {
         settings.floatOnTop.toggle()
+    }
+}
+
+extension NSWindow {
+    /// Paints the title bar with the page's background so toolbar and page read as one
+    /// surface — but only when that colour suits the current appearance, so the toolbar
+    /// icons keep their contrast.
+    func matchTitlebar(to pageColor: NSColor?) {
+        let isDarkAppearance = effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        guard let color = pageColor?.usingColorSpace(.sRGB), color.alphaComponent > 0.99 else {
+            backgroundColor = .windowBackgroundColor
+            return
+        }
+        let luminance = 0.2126 * color.redComponent + 0.7152 * color.greenComponent + 0.0722 * color.blueComponent
+        backgroundColor = (luminance < 0.5) == isDarkAppearance ? color : .windowBackgroundColor
     }
 }

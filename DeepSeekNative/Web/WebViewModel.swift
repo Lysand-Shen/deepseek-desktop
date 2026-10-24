@@ -15,10 +15,46 @@ final class WebViewModel {
         case failed(PageError)
     }
 
+    /// Stores the kind of failure rather than text, so an error page on screen follows a language switch.
     struct PageError: Equatable {
-        var symbol: String
-        var title: String
-        var message: String
+        enum Kind: Equatable {
+            case offline, timedOut, cannotConnect, insecure, crashed, failed
+        }
+
+        var kind: Kind
+        /// The system's description of the underlying error, for kinds without a message of our own.
+        var detail: String?
+
+        var symbol: String {
+            switch kind {
+            case .offline: "wifi.slash"
+            case .timedOut: "clock.badge.exclamationmark"
+            case .cannotConnect: "network.slash"
+            case .insecure: "lock.trianglebadge.exclamationmark"
+            case .crashed, .failed: "exclamationmark.triangle"
+            }
+        }
+
+        @MainActor var title: String {
+            switch kind {
+            case .offline: L("You're Offline")
+            case .timedOut: L("Connection Timed Out")
+            case .cannotConnect: L("Can't Connect to DeepSeek")
+            case .insecure: L("Can't Establish a Secure Connection")
+            case .crashed: L("The Page Stopped Unexpectedly")
+            case .failed: L("The Page Couldn't Load")
+            }
+        }
+
+        @MainActor var message: String {
+            switch kind {
+            case .offline: L("Check your network connection. The page reloads automatically when you're back online.")
+            case .timedOut: L("DeepSeek isn't responding right now. Try again in a moment.")
+            case .cannotConnect: L("The server can't be reached. Check your network or proxy settings.")
+            case .crashed: L("The page's web process quit several times in a short time. Try reloading, or clear the cache in Settings.")
+            case .insecure, .failed: detail ?? ""
+            }
+        }
     }
 
     struct Toast: Identifiable, Equatable {
@@ -235,7 +271,7 @@ final class WebViewModel {
         ]
         await webView.configuration.websiteDataStore.removeData(ofTypes: types, modifiedSince: .distantPast)
         webView.reloadFromOrigin()
-        showToast(symbol: "checkmark.circle", message: "缓存已清除，登录状态已保留")
+        showToast(symbol: "checkmark.circle", message: L("Cache cleared. You're still signed in."))
     }
 
     /// Removes every cookie and storage item of the current account, which signs it out.
@@ -246,14 +282,14 @@ final class WebViewModel {
         hasContent = false
         phase = .loading
         loadHome()
-        showToast(symbol: "person.crop.circle.badge.xmark", message: "已退出“\(profiles.current.name)”并清除其网站数据")
+        showToast(symbol: "person.crop.circle.badge.xmark", message: L("Signed out of “\(profiles.current.displayName)” and cleared its website data"))
     }
 
     func switchProfile(to id: UUID) {
         guard id != profiles.currentID else { return }
         profiles.select(id)
         rebuildWebView()
-        showToast(symbol: "person.crop.circle", message: "已切换到“\(profiles.current.name)”")
+        showToast(symbol: "person.crop.circle", message: L("Switched to “\(profiles.current.displayName)”"))
     }
 
     func addProfileAndSwitch() {
@@ -408,11 +444,7 @@ final class WebViewModel {
         if recentCrashes.count <= 2 {
             webView.reload()
         } else {
-            phase = .failed(PageError(
-                symbol: "exclamationmark.triangle",
-                title: "页面意外停止运行",
-                message: "网页进程在短时间内多次退出。可以尝试重新加载，或在设置中清除缓存。"
-            ))
+            phase = .failed(PageError(kind: .crashed))
         }
     }
 
@@ -422,29 +454,24 @@ final class WebViewModel {
         // 102: frame load interrupted (e.g. the response became a download). 204: handled by a plug-in.
         if error.domain == "WebKitErrorDomain", error.code == 102 || error.code == 204 { return nil }
 
-        let offlineError = PageError(
-            symbol: "wifi.slash",
-            title: "网络连接已断开",
-            message: "请检查网络连接。网络恢复后会自动重新加载。"
-        )
-        if offline { return offlineError }
+        if offline { return PageError(kind: .offline) }
         guard error.domain == NSURLErrorDomain else {
-            return PageError(symbol: "exclamationmark.triangle", title: "页面加载失败", message: error.localizedDescription)
+            return PageError(kind: .failed, detail: error.localizedDescription)
         }
         switch error.code {
         case NSURLErrorNotConnectedToInternet, NSURLErrorNetworkConnectionLost, NSURLErrorDataNotAllowed,
              NSURLErrorInternationalRoamingOff:
-            return offlineError
+            return PageError(kind: .offline)
         case NSURLErrorTimedOut:
-            return PageError(symbol: "clock.badge.exclamationmark", title: "连接超时", message: "DeepSeek 暂时没有响应，请稍后重试。")
+            return PageError(kind: .timedOut)
         case NSURLErrorCannotFindHost, NSURLErrorDNSLookupFailed, NSURLErrorCannotConnectToHost:
-            return PageError(symbol: "network.slash", title: "无法连接到 DeepSeek", message: "服务器暂时无法访问，请检查网络或代理设置。")
+            return PageError(kind: .cannotConnect)
         case NSURLErrorSecureConnectionFailed, NSURLErrorServerCertificateUntrusted,
              NSURLErrorServerCertificateHasBadDate, NSURLErrorServerCertificateHasUnknownRoot,
              NSURLErrorServerCertificateNotYetValid, NSURLErrorClientCertificateRejected:
-            return PageError(symbol: "lock.trianglebadge.exclamationmark", title: "无法建立安全连接", message: error.localizedDescription)
+            return PageError(kind: .insecure, detail: error.localizedDescription)
         default:
-            return PageError(symbol: "exclamationmark.triangle", title: "页面加载失败", message: error.localizedDescription)
+            return PageError(kind: .failed, detail: error.localizedDescription)
         }
     }
 
@@ -464,9 +491,9 @@ final class WebViewModel {
     private func handleDownload(_ event: DownloadManager.Event) {
         switch event {
         case .finished(let url):
-            showToast(symbol: "arrow.down.circle", message: "已下载“\(url.lastPathComponent)”", revealURL: url)
+            showToast(symbol: "arrow.down.circle", message: L("Downloaded “\(url.lastPathComponent)”"), revealURL: url)
         case .failed(let filename, let message):
-            showToast(symbol: "exclamationmark.triangle", message: "“\(filename)”下载失败：\(message)")
+            showToast(symbol: "exclamationmark.triangle", message: L("Couldn't download “\(filename)”: \(message)"))
         }
     }
 }

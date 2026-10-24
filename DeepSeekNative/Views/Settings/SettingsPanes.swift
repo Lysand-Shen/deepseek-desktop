@@ -5,22 +5,42 @@ import SwiftUI
 
 struct GeneralSettingsView: View {
     @Bindable var settings: AppSettings
+    @Bindable private var localizer = Localizer.shared
     private let launchAtLogin = LaunchAtLogin.shared
 
     var body: some View {
         Form {
-            Section("启动") {
-                Toggle("登录时自动打开", isOn: Binding(
+            Section {
+                Picker(L("Language"), selection: $localizer.preference) {
+                    ForEach(AppLanguage.allCases) { Text($0.title).tag($0) }
+                }
+            } header: {
+                Text(L("Language"))
+            } footer: {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(L("Menus, Settings and dialogs switch right away. Menu items provided by macOS, and the default language of DeepSeek's web page, switch after a restart."))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    if localizer.needsRelaunch {
+                        Spacer()
+                        Button(L("Restart Now")) { NSApp.relaunch() }
+                            .controlSize(.small)
+                    }
+                }
+            }
+
+            Section(L("Startup")) {
+                Toggle(L("Open at Login"), isOn: Binding(
                     get: { launchAtLogin.isEnabled },
                     set: { launchAtLogin.setEnabled($0) }
                 ))
                 if launchAtLogin.needsApproval {
                     HStack {
-                        Text("需要在“系统设置 › 通用 › 登录项”中允许 DeepSeek。")
+                        Text(L("Allow DeepSeek in System Settings › General › Login Items."))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         Spacer()
-                        Button("打开系统设置") { launchAtLogin.openSystemSettings() }
+                        Button(L("Open System Settings")) { launchAtLogin.openSystemSettings() }
                             .controlSize(.small)
                     }
                 }
@@ -29,27 +49,27 @@ struct GeneralSettingsView: View {
                         .font(.caption)
                         .foregroundStyle(.red)
                 }
-                Toggle("启动时不显示窗口（仅在后台运行）", isOn: $settings.startHidden)
+                Toggle(L("Start in the background without opening the window"), isOn: $settings.startHidden)
                     .disabled(!settings.keepRunningInBackground)
             }
 
-            Section("窗口") {
-                Picker("外观", selection: $settings.appearance) {
+            Section(L("Window")) {
+                Picker(L("Appearance"), selection: $settings.appearance) {
                     ForEach(AppearanceMode.allCases) { Text($0.title).tag($0) }
                 }
-                Toggle("窗口置顶", isOn: $settings.floatOnTop)
-                Toggle("关闭窗口后继续在后台运行", isOn: $settings.keepRunningInBackground)
+                Toggle(L("Float on Top"), isOn: $settings.floatOnTop)
+                Toggle(L("Keep running in the background after closing the window"), isOn: $settings.keepRunningInBackground)
             }
 
             Section {
-                Toggle("在程序坞中显示图标", isOn: $settings.showDockIcon)
+                Toggle(L("Show icon in the Dock"), isOn: $settings.showDockIcon)
                     .disabled(settings.showDockIcon && !settings.showMenuBarIcon)
-                Toggle("在菜单栏中显示图标", isOn: $settings.showMenuBarIcon)
+                Toggle(L("Show icon in the menu bar"), isOn: $settings.showMenuBarIcon)
                     .disabled(settings.showMenuBarIcon && !settings.showDockIcon)
             } header: {
-                Text("图标")
+                Text(L("Icons"))
             } footer: {
-                Text("两者至少保留一个，方便随时找回窗口。点按菜单栏图标可显示或隐藏窗口，右键点按打开菜单。")
+                Text(L("At least one stays on, so you can always get back to the window. Click the menu bar icon to show or hide the window, or right-click it for a menu."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -68,49 +88,63 @@ struct ShortcutSettingsView: View {
     var body: some View {
         Form {
             Section {
-                LabeledContent("显示 / 隐藏 DeepSeek") {
-                    KeyRecorder(combo: $settings.hotKey)
+                LabeledContent(L("Quick Chat")) {
+                    KeyRecorder(combo: $settings.quickChatHotKey)
                 }
-                if let error = hotKeys.registrationError {
-                    Label(error, systemImage: "exclamationmark.triangle.fill")
-                        .font(.callout)
-                        .foregroundStyle(.orange)
+                if let error = hotKeys.errors[.quickChat] {
+                    ErrorLabel(error: error)
                 }
-                if settings.hotKey != .defaultSummon {
-                    Button("恢复默认（⌥ Space）") { settings.hotKey = .defaultSummon }
+                if settings.quickChatHotKey != .defaultSummon {
+                    Button(L("Restore Default (\(KeyCombo.defaultSummon.displayString))")) { settings.quickChatHotKey = .defaultSummon }
                 }
             } header: {
-                Text("全局快捷键")
+                Text(L("Quick Chat"))
             } footer: {
-                Text("在任何应用中按下即可唤出 DeepSeek，再按一次隐藏并回到之前的应用。")
+                Text(L("Opens a small input bar over any app. Press ↩ to ask, and the answer appears in a compact window that stays on top. Press the shortcut again to hide it."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
             Section {
-                Picker("窗口位置", selection: $settings.summonPosition) {
+                LabeledContent(L("Show or Hide Main Window")) {
+                    KeyRecorder(combo: $settings.mainWindowHotKey)
+                }
+                if let error = hotKeys.errors[.mainWindow] {
+                    ErrorLabel(error: error)
+                }
+                Picker(L("Window Position"), selection: $settings.summonPosition) {
                     ForEach(SummonPosition.allCases) { Text($0.title).tag($0) }
                 }
-                Toggle("唤出后自动聚焦输入框", isOn: $settings.focusInputOnSummon)
-                Toggle("切换到其他应用时自动隐藏", isOn: $settings.hideOnDeactivate)
+                Toggle(L("Put the cursor in the message box"), isOn: $settings.focusInputOnSummon)
+                Toggle(L("Hide when switching to another app"), isOn: $settings.hideOnDeactivate)
             } header: {
-                Text("唤出时")
+                Text(L("Main Window"))
             } footer: {
-                Text("开启“自动隐藏”后，从访达拖拽文件到窗口前需要先固定窗口，可改用粘贴或上传按钮。")
+                Text(L("The main window also opens from the Dock or the menu bar icon. With auto-hide on, float the window on top before dragging files in from Finder, or paste them or use the upload button instead."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
-            Section("应用内快捷键") {
-                ShortcutRow(title: "新对话", keys: "⌘ N")
-                ShortcutRow(title: "重新载入页面", keys: "⌘ R")
-                ShortcutRow(title: "窗口置顶", keys: "⌥ ⌘ T")
-                ShortcutRow(title: "放大 / 缩小 / 实际大小", keys: "⌘ +  ⌘ −  ⌘ 0")
-                ShortcutRow(title: "后退 / 前进", keys: "⌘ [  ⌘ ]")
-                ShortcutRow(title: "关闭窗口（后台继续运行）", keys: "⌘ W")
+            Section(L("In-App Shortcuts")) {
+                ShortcutRow(title: L("New Chat"), keys: "⌘ N")
+                ShortcutRow(title: L("Reload Page"), keys: "⌘ R")
+                ShortcutRow(title: L("Float on Top"), keys: "⌥ ⌘ T")
+                ShortcutRow(title: L("Zoom In / Zoom Out / Actual Size"), keys: "⌘ +  ⌘ −  ⌘ 0")
+                ShortcutRow(title: L("Back / Forward"), keys: "⌘ [  ⌘ ]")
+                ShortcutRow(title: L("Close Window (keeps running)"), keys: "⌘ W")
             }
         }
         .formStyle(.grouped)
+    }
+}
+
+private struct ErrorLabel: View {
+    let error: HotKeyManager.RegistrationError
+
+    var body: some View {
+        Label(error.message, systemImage: "exclamationmark.triangle.fill")
+            .font(.callout)
+            .foregroundStyle(.orange)
     }
 }
 
@@ -152,45 +186,45 @@ struct AccountSettingsView: View {
                 Button {
                     model.addProfileAndSwitch()
                 } label: {
-                    Label("添加账户", systemImage: "plus")
+                    Label(L("Add Account"), systemImage: "plus")
                 }
             } header: {
-                Text("账户")
+                Text(L("Accounts"))
             } footer: {
-                Text("每个账户拥有独立的 Cookie 与本地存储，可同时保持多个 DeepSeek 账号的登录状态并随时切换。")
+                Text(L("Each account has its own cookies and local storage, so several DeepSeek accounts can stay signed in and you can switch between them at any time."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
-            Section("当前账户：\(profiles.current.name)") {
+            Section(L("Current Account: \(profiles.current.displayName)")) {
                 LabeledContent {
-                    Button("清除缓存") { Task { await model.clearCache() } }
+                    Button(L("Clear Cache")) { Task { await model.clearCache() } }
                 } label: {
-                    Text("清除缓存")
-                    Text("页面显示异常时使用，登录状态会保留。")
+                    Text(L("Clear Cache"))
+                    Text(L("Use this if the page looks wrong. You stay signed in."))
                 }
                 LabeledContent {
-                    Button("退出登录…", role: .destructive) { isConfirmingSignOut = true }
+                    Button(L("Sign Out…"), role: .destructive) { isConfirmingSignOut = true }
                 } label: {
-                    Text("退出登录并清除数据")
-                    Text("删除该账户在本机的 Cookie、本地存储与缓存。")
+                    Text(L("Sign Out and Clear Data"))
+                    Text(L("Deletes this account's cookies, local storage and cache on this Mac."))
                 }
             }
         }
         .formStyle(.grouped)
-        .confirmationDialog("退出“\(profiles.current.name)”？", isPresented: $isConfirmingSignOut) {
-            Button("退出并清除", role: .destructive) { Task { await model.signOutAndClearData() } }
+        .confirmationDialog(L("Sign out of “\(profiles.current.displayName)”?"), isPresented: $isConfirmingSignOut) {
+            Button(L("Sign Out and Clear"), role: .destructive) { Task { await model.signOutAndClearData() } }
         } message: {
-            Text("云端聊天记录不受影响，重新登录后即可看到。")
+            Text(L("Your chats stay in the cloud and come back when you sign in again."))
         }
         .confirmationDialog(
-            "删除账户“\(pendingDeletion?.name ?? "")”？",
+            L("Delete the account “\(pendingDeletion?.displayName ?? "")”?"),
             isPresented: Binding(get: { pendingDeletion != nil }, set: { if !$0 { pendingDeletion = nil } }),
             presenting: pendingDeletion
         ) { profile in
-            Button("删除", role: .destructive) { Task { await profiles.remove(profile.id) } }
+            Button(L("Delete"), role: .destructive) { Task { await profiles.remove(profile.id) } }
         } message: { _ in
-            Text("该账户在本机的登录状态与网站数据将被永久删除。")
+            Text(L("Its sign-in and website data on this Mac will be permanently deleted."))
         }
     }
 }
@@ -211,22 +245,22 @@ private struct ProfileRow: View {
             Image(systemName: isCurrent ? "checkmark.circle.fill" : "person.crop.circle")
                 .font(.title3)
                 .foregroundStyle(isCurrent ? Color.accentColor : Color.secondary)
-            TextField("", text: $name, prompt: Text("账户名称"))
+            TextField("", text: $name, prompt: Text(L("Account Name")))
                 .labelsHidden()
                 .textFieldStyle(.plain)
-                .help("点按以重命名")
+                .help(L("Click to rename"))
                 .focused($isEditing)
-                .onSubmit { onRename(name) }
+                .onSubmit { if name != profile.displayName { onRename(name) } }
             Spacer()
             if isCurrent {
-                Text("使用中")
+                Text(L("In Use"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
-                Button("切换", action: onSelect)
+                Button(L("Switch"), action: onSelect)
             }
             Menu {
-                Button("删除账户…", role: .destructive, action: onDelete)
+                Button(L("Delete Account…"), role: .destructive, action: onDelete)
                     .disabled(!canDelete)
             } label: {
                 Image(systemName: "ellipsis.circle")
@@ -235,10 +269,11 @@ private struct ProfileRow: View {
             .menuIndicator(.hidden)
             .fixedSize()
         }
-        .onAppear { name = profile.name }
-        .onChange(of: profile.name) { _, newValue in name = newValue }
+        // Compared with the display name so the untouched default account keeps following the language.
+        .onAppear { name = profile.displayName }
+        .onChange(of: profile.displayName) { _, newValue in name = newValue }
         .onChange(of: isEditing) { _, editing in
-            if !editing, name != profile.name { onRename(name) }
+            if !editing, name != profile.displayName { onRename(name) }
         }
     }
 }
@@ -251,39 +286,39 @@ struct WebSettingsView: View {
 
     var body: some View {
         Form {
-            Section("页面") {
-                LabeledContent("页面缩放") {
+            Section(L("Page")) {
+                LabeledContent(L("Page Zoom")) {
                     HStack(spacing: 8) {
                         Text("\(Int((settings.pageZoom * 100).rounded()))%")
                             .monospacedDigit()
                             .frame(minWidth: 44, alignment: .trailing)
                         Stepper(
-                            "页面缩放",
+                            L("Page Zoom"),
                             value: Binding(get: { settings.pageZoom }, set: { settings.setPageZoom($0) }),
                             in: AppSettings.zoomRange,
                             step: 0.1
                         )
                         .labelsHidden()
-                        Button("重置") { settings.setPageZoom(1.0) }
+                        Button(L("Reset")) { settings.setPageZoom(1.0) }
                             .disabled(settings.pageZoom == 1.0)
                     }
                 }
             }
 
             Section {
-                Toggle("在默认浏览器中打开外部链接", isOn: $settings.openExternalLinksInBrowser)
+                Toggle(L("Open external links in the default browser"), isOn: $settings.openExternalLinksInBrowser)
             } header: {
-                Text("链接")
+                Text(L("Links"))
             } footer: {
-                Text("关闭后，外部链接会在应用内的新窗口中打开。按住 ⌘ 点按链接总会使用默认浏览器。")
+                Text(L("When off, external links open in a new window in the app. ⌘-clicking a link always uses the default browser."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
-            Section("下载") {
-                Toggle("每次下载前询问保存位置", isOn: $settings.askDownloadLocation)
-                LabeledContent("默认位置") {
-                    Button("在访达中打开“下载”") {
+            Section(L("Downloads")) {
+                Toggle(L("Ask where to save each download"), isOn: $settings.askDownloadLocation)
+                LabeledContent(L("Default Location")) {
+                    Button(L("Show Downloads in Finder")) {
                         NSWorkspace.shared.open(DownloadManager.downloadsDirectory)
                     }
                 }
@@ -300,7 +335,7 @@ struct AboutSettingsView: View {
         let info = Bundle.main.infoDictionary
         let short = info?["CFBundleShortVersionString"] as? String ?? "1.0"
         let build = info?["CFBundleVersion"] as? String ?? "1"
-        return "版本 \(short)（\(build)）"
+        return L("Version \(short) (\(build))")
     }
 
     var body: some View {
@@ -312,7 +347,7 @@ struct AboutSettingsView: View {
                 .font(.title.weight(.semibold))
             Text(version)
                 .foregroundStyle(.secondary)
-            Text("基于 DeepSeek 官方网页版的原生 macOS 客户端。\n使用系统 WebKit 渲染，无需 API Key，不调用任何私有接口，不收集数据。")
+            Text(L("A native macOS client for DeepSeek's official web app.\nRendered by the system's WebKit. No API key, no private APIs, no data collection."))
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

@@ -3,7 +3,7 @@ options:
   bundleIdPrefix: com.sink7
   deploymentTarget:
     macOS: "14.0"
-  developmentLanguage: zh-Hans
+  developmentLanguage: en
   createIntermediateGroups: true
   groupSortPosition: top
 
@@ -23,8 +23,8 @@ targets:
       base:
         PRODUCT_NAME: DeepSeek
         PRODUCT_BUNDLE_IDENTIFIER: com.sink7.DeepSeekNative
-        MARKETING_VERSION: "1.0.0"
-        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "1.1.0"
+        CURRENT_PROJECT_VERSION: "2"
         INFOPLIST_FILE: DeepSeekNative/Resources/Info.plist
         GENERATE_INFOPLIST_FILE: NO
         CODE_SIGN_ENTITLEMENTS: DeepSeekNative/Resources/DeepSeekNative.entitlements
@@ -37,7 +37,8 @@ targets:
         ENABLE_USER_SCRIPT_SANDBOXING: YES
         DEAD_CODE_STRIPPING: YES
         COMBINE_HIDPI_IMAGES: YES
-        SWIFT_EMIT_LOC_STRINGS: NO
+        SWIFT_EMIT_LOC_STRINGS: YES
+        LOCALIZATION_PREFERS_STRING_CATALOGS: YES
       configs:
         Release:
           SWIFT_COMPILATION_MODE: wholemodule
