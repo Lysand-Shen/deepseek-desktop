@@ -770,16 +770,6 @@
         }
       }
     },
-    "New Chat (⌘N)": {
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "新对话（⌘N）"
-          }
-        }
-      }
-    },
     "None": {
       "localizations": {
         "zh-Hans": {

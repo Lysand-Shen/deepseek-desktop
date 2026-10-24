@@ -62,6 +62,18 @@ enum WebScripts {
     return isSent() ? 'sent' : 'not-sent';
     """
 
+    /// Injected into the main window's page: hides the whale logo DeepSeek floats at the
+    /// top left while the sidebar is collapsed; the title bar already says DeepSeek.
+    /// The selectors are DeepSeek's hashed class names (sidebar, its collapsed state, the
+    /// logo), taken from its stylesheet. If they change, the logo simply shows again.
+    static let mainWindowStyle = """
+    (() => {
+      const style = document.createElement('style');
+      style.textContent = '.dc04ec1d.a02af2e6 ._6acebc2 { display: none !important; }';
+      (document.head || document.documentElement).appendChild(style);
+    })();
+    """
+
     /// Injected into quick chat's page: hides the header of DeepSeek's narrow layout, whose
     /// menu and new-chat buttons the quick chat window provides itself. If the class name
     /// changes, the header simply shows again.

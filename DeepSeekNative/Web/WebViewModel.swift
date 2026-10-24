@@ -122,6 +122,9 @@ final class WebViewModel {
         configuration.preferences.isElementFullscreenEnabled = true
         configuration.preferences.javaScriptCanOpenWindowsAutomatically = true
         configuration.defaultWebpagePreferences.preferredContentMode = .desktop
+        configuration.userContentController.addUserScript(WKUserScript(
+            source: WebScripts.mainWindowStyle, injectionTime: .atDocumentStart, forMainFrameOnly: true
+        ))
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.allowsMagnification = false

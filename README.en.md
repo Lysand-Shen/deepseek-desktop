@@ -64,6 +64,7 @@ Requires macOS 14 Sonoma or later.
 
 **Native window**
 - The toolbar takes on the page's background color in both light and dark mode, and shows the conversation title.
+- A pared-down window: the toolbar keeps only Reload and Float on Top, and the whale logo DeepSeek shows at the top left is hidden while the sidebar is collapsed.
 - Remembers its size and position, and moves back on screen if a display goes away.
 - Float on top, full screen, page zoom.
 - Closing the window keeps the app running, so a reply that's still generating isn't cut off.
@@ -159,7 +160,8 @@ State lives in `@MainActor @Observable` classes, built with Swift 6 strict concu
 
 - The app is ad-hoc signed and not notarized, so it has to be allowed once on first launch (see Install).
 - App Sandbox is off, because with ad-hoc signing every rebuild would trigger sandbox container prompts. Hardened Runtime is on, and web content runs in WebKit's own sandboxed processes.
-- The toolbar's New Chat button clicks the page's own "New chat" control and falls back to reloading the home page.
+- New Chat in the menu (⌘N) clicks the page's own "New chat" control and falls back to reloading the home page.
+- The whale logo hidden with the sidebar collapsed is found by class names from DeepSeek's stylesheet. Its build tools generate those names, so they may change when DeepSeek updates the site; the logo then shows again and everything else keeps working.
 - Quick chat types the question into the page's message box and presses Return. If a DeepSeek redesign breaks that, the question stays in the compact window's message box to send by hand, and `WebScripts.swift` needs updating.
 - After quick chat has been hidden for 10 minutes, its page is released to save memory, so the next question takes a second or two longer.
 - The quick chat window hides the header of DeepSeek's narrow layout, found by its class name `the-header`. If DeepSeek renames it, the header shows again and everything else keeps working.

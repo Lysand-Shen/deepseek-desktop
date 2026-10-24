@@ -2,7 +2,6 @@ import AppKit
 import SwiftUI
 
 private extension NSToolbarItem.Identifier {
-    static let newChat = Self("com.sink7.DeepSeekNative.newChat")
     static let conversationTitle = Self("com.sink7.DeepSeekNative.title")
     static let reload = Self("com.sink7.DeepSeekNative.reload")
     static let pin = Self("com.sink7.DeepSeekNative.pin")
@@ -17,7 +16,6 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     private let model: WebViewModel
     private let settings: AppSettings
     private let titleField = NSTextField(labelWithString: "DeepSeek")
-    private lazy var newChatItem = makeButtonItem(.newChat, symbol: "square.and.pencil", action: #selector(newChat(_:)))
     private lazy var reloadItem = makeButtonItem(.reload, symbol: "arrow.clockwise", action: #selector(reload(_:)))
     private lazy var pinItem = makeButtonItem(.pin, symbol: "pin", action: #selector(togglePin(_:)))
     private lazy var titleItem = NSToolbarItem(itemIdentifier: .conversationTitle)
@@ -142,11 +140,10 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     }
 
     private func applyToolbarText() {
-        for (item, label) in [(newChatItem, L("New Chat")), (reloadItem, L("Reload")), (pinItem, L("Float on Top"))] {
+        for (item, label) in [(reloadItem, L("Reload")), (pinItem, L("Float on Top"))] {
             item.label = label
             item.paletteLabel = label
         }
-        newChatItem.toolTip = L("New Chat (⌘N)")
         reloadItem.toolTip = L("Reload (⌘R)")
         titleItem.label = L("Title")
     }
@@ -173,7 +170,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     }
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [.newChat, .flexibleSpace, .conversationTitle, .flexibleSpace, .reload, .pin]
+        [.flexibleSpace, .conversationTitle, .flexibleSpace, .reload, .pin]
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
@@ -185,8 +182,6 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         willBeInsertedIntoToolbar flag: Bool
     ) -> NSToolbarItem? {
         switch itemIdentifier {
-        case .newChat:
-            return newChatItem
         case .reload:
             return reloadItem
         case .pin:
@@ -219,10 +214,6 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     }
 
     // MARK: - Actions
-
-    @objc private func newChat(_ sender: Any?) {
-        model.startNewChat()
-    }
 
     @objc private func reload(_ sender: Any?) {
         model.reload()
