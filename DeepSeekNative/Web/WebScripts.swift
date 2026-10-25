@@ -62,6 +62,42 @@ enum WebScripts {
     return isSent() ? 'sent' : 'not-sent';
     """
 
+    /// Body of an async function for `callAsyncJavaScript` with `files` (name, MIME type and
+    /// base64 data each) and `draft`: hands the files to the page's own upload input, as if
+    /// chosen with its paperclip button, then puts `draft` in the message box without sending.
+    /// Returns `attached` or `no-input`.
+    static let attachFiles = """
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    const deadline = Date.now() + 20000;
+    let input = document.querySelector('input[type="file"]');
+    while (!input && Date.now() < deadline) {
+      await sleep(100);
+      input = document.querySelector('input[type="file"]');
+    }
+    if (!input) return 'no-input';
+
+    const transfer = new DataTransfer();
+    for (const file of files) {
+      const binary = atob(file.data);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      transfer.items.add(new File([bytes], file.name, { type: file.type }));
+    }
+    input.files = transfer.files;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+
+    const box = document.querySelector('textarea#chat-input') || document.querySelector('textarea');
+    if (box) {
+      if (draft) {
+        // React tracks the value through the prototype's setter; assigning `value` alone is ignored.
+        Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(box, box.value + draft);
+        box.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      box.focus();
+    }
+    return 'attached';
+    """
+
     /// Injected into the main window's page: hides the whale logo DeepSeek floats at the
     /// top left while the sidebar is collapsed; the title bar already says DeepSeek.
     /// The rule targets the floating bar itself rather than the collapsed sidebar, because

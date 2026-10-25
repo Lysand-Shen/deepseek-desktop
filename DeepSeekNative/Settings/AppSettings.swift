@@ -36,6 +36,23 @@ enum SummonPosition: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
+/// What the quick chat shortcut brings up.
+enum QuickChatOpening: String, CaseIterable, Identifiable, Sendable {
+    /// The input bar, for a new question.
+    case newChat
+    /// The conversation the window showed when it was put away, if there is one.
+    case lastConversation
+
+    var id: String { rawValue }
+
+    @MainActor var title: String {
+        switch self {
+        case .newChat: L("New Chat")
+        case .lastConversation: L("Last Conversation")
+        }
+    }
+}
+
 /// User preferences, persisted to `UserDefaults` as soon as they change.
 @MainActor
 @Observable
@@ -48,6 +65,7 @@ final class AppSettings {
         /// Named before quick chat existed, when the one shortcut summoned the main window.
         static let quickChatHotKey = "hotKey"
         static let mainWindowHotKey = "mainWindowHotKey"
+        static let quickChatOpening = "quickChatOpening"
         static let summonPosition = "summonPosition"
         static let focusInputOnSummon = "focusInputOnSummon"
         static let hideOnDeactivate = "hideOnDeactivate"
@@ -76,6 +94,10 @@ final class AppSettings {
     /// Shows or hides the main window. Off unless the user records one.
     var mainWindowHotKey: KeyCombo? {
         didSet { save(mainWindowHotKey, forKey: Key.mainWindowHotKey) }
+    }
+
+    var quickChatOpening: QuickChatOpening {
+        didSet { defaults.set(quickChatOpening.rawValue, forKey: Key.quickChatOpening) }
     }
 
     var summonPosition: SummonPosition {
@@ -136,6 +158,7 @@ final class AppSettings {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         defaults.register(defaults: [
+            Key.quickChatOpening: QuickChatOpening.newChat.rawValue,
             Key.summonPosition: SummonPosition.remember.rawValue,
             Key.focusInputOnSummon: true,
             Key.hideOnDeactivate: false,
@@ -152,6 +175,7 @@ final class AppSettings {
 
         quickChatHotKey = Self.loadHotKey(Key.quickChatHotKey, from: defaults, default: .defaultSummon)
         mainWindowHotKey = Self.loadHotKey(Key.mainWindowHotKey, from: defaults, default: nil)
+        quickChatOpening = QuickChatOpening(rawValue: defaults.string(forKey: Key.quickChatOpening) ?? "") ?? .newChat
         summonPosition = SummonPosition(rawValue: defaults.string(forKey: Key.summonPosition) ?? "") ?? .remember
         focusInputOnSummon = defaults.bool(forKey: Key.focusInputOnSummon)
         hideOnDeactivate = defaults.bool(forKey: Key.hideOnDeactivate)

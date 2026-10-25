@@ -13,7 +13,7 @@ final class SettingsWindowController: NSWindowController {
     init(model: WebViewModel, settings: AppSettings, profiles: ProfileStore) {
         tabController.tabStyle = .toolbar
         tabController.addPane(GeneralSettingsView(settings: settings), label: { L("General") }, symbol: "gearshape", height: 640)
-        tabController.addPane(ShortcutSettingsView(settings: settings), label: { L("Shortcut") }, symbol: "command", height: 700)
+        tabController.addPane(ShortcutSettingsView(settings: settings), label: { L("Shortcut") }, symbol: "command", height: 760)
         tabController.addPane(AccountSettingsView(model: model, profiles: profiles), label: { L("Accounts") }, symbol: "person.2", height: 420)
         tabController.addPane(WebSettingsView(model: model, settings: settings), label: { L("Web") }, symbol: "globe", height: 360)
         tabController.addPane(AboutSettingsView(), label: { L("About") }, symbol: "info.circle", height: 340)

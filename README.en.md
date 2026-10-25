@@ -5,7 +5,7 @@
 <h1 align="center">DeepSeek Native</h1>
 
 <p align="center">
-  A lightweight native macOS client for DeepSeek. Ask from any app with <b>⌥ Space</b>. 1.4 MB download, no Electron.
+  A lightweight native macOS client for DeepSeek. Ask from any app with <b>⌥ Space</b>. 1.5 MB download, no Electron.
 </p>
 
 <p align="center">
@@ -21,7 +21,7 @@
 
 DeepSeek Native wraps the official web app, [chat.deepseek.com](https://chat.deepseek.com), in a SwiftUI + AppKit shell using the system's WKWebView. Chat, DeepThink, web search and file uploads work exactly as they do on the web. On top of that it adds what a browser tab can't: a quick chat bar like the ChatGPT and Claude desktop apps, a menu bar icon, multiple accounts, float on top, keeping running after the window closes, and an English or Chinese interface you can switch at any time.
 
-- **Light:** Apple frameworks only, no third-party dependencies. The app is 3.4 MB and the DMG about 1.4 MB, universal for Apple Silicon and Intel.
+- **Light:** Apple frameworks only, no third-party dependencies. The app is 3.6 MB and the DMG about 1.5 MB, universal for Apple Silicon and Intel.
 - **Fast:** about 0.8 s from launch to chatting on later launches. The page is created once, so showing and hiding are instant.
 - **No API key:** it doesn't use the DeepSeek API or any undocumented endpoint. You sign in with your normal DeepSeek account.
 
@@ -53,6 +53,8 @@ Requires macOS 14 Sonoma or later.
 - Type a question and press ↩. Like Gemini's, the bar grows upwards into a compact window that stays on top: the answer appears above, and DeepSeek's message box sits where the bar was, ready for follow-ups. ⌥↩ adds a line and ⎋ closes.
 - Floating buttons at the top close the window, start a new chat (shrinking back into the bar), or open the conversation in the main window. Drag the top of the window to move it.
 - Press the shortcut again to hide it.
+- Drag images or files onto the bar: it opens a new chat with them in DeepSeek's message box, along with anything you'd already typed, so you can add your question and press ↩. Once the conversation is open you can keep dropping files into the window.
+- Settings › Shortcut › Opens To chooses whether the shortcut brings up a new chat or the conversation you left last time. With Last Conversation, the window's New Chat button starts a new one.
 - Quick chat uses a page of its own, so it never interrupts a conversation in the main window. Its chats are saved in your DeepSeek history like any other.
 - Record a different shortcut, or turn it off, in Settings › Shortcut.
 

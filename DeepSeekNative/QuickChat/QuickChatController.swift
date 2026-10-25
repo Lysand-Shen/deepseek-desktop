@@ -8,6 +8,11 @@ final class QuickChatController {
     /// releases the web content process.
     private static let idleLifetime: Duration = .seconds(600)
 
+    private enum Key {
+        static let lastConversation = "quickChatLastConversation"
+        static let lastConversationProfile = "quickChatLastConversationProfile"
+    }
+
     private let model: WebViewModel
     private let profiles: ProfileStore
     private let mainWindow: MainWindowController
@@ -26,6 +31,7 @@ final class QuickChatController {
         panel.onClose = { [weak self] in self?.hide() }
         panel.onNewChat = { [weak self] in self?.newChat() }
         panel.onOpenInMainWindow = { [weak self] in self?.openInMainWindow() }
+        panel.onDropFiles = { [weak self] in self?.attach($0) }
 
         // Start over after switching accounts.
         observeChanges { [weak self] in
@@ -35,10 +41,10 @@ final class QuickChatController {
         }
     }
 
-    /// Bound to the quick chat shortcut: opens the bar, or puts away what's showing.
+    /// Bound to the quick chat shortcut: opens quick chat, or puts away what's showing.
     func toggle() {
         if !panel.isVisible {
-            showBar()
+            show()
         } else if panel.isKeyWindow {
             hide()
         } else {
@@ -46,12 +52,32 @@ final class QuickChatController {
         }
     }
 
-    func showBar() {
+    /// Opens the bar, or the conversation left last time when Settings asks for that.
+    func show() {
+        if model.settings.quickChatOpening == .lastConversation, let url = lastConversation {
+            showConversation(url)
+        } else {
+            showBar()
+        }
+    }
+
+    private func showBar() {
         teardown?.cancel()
         revealApp()
         // Start loading now so the page is ready by the time the question is.
         panel.model.session = prepareSession()
         panel.presentBar(on: Self.screenWithMouse())
+    }
+
+    private func showConversation(_ url: URL) {
+        teardown?.cancel()
+        revealApp()
+        let session = prepareSession()
+        // Still on the page unless it was released while hidden.
+        if session.currentURL != url { session.load(url) }
+        panel.model.session = session
+        panel.presentConversation(on: Self.screenWithMouse())
+        session.focusInput()
     }
 
     private func submit(_ text: String) {
@@ -60,17 +86,58 @@ final class QuickChatController {
         panel.expand()
     }
 
+    /// Files dropped on the bar start a new chat; dropped on a conversation, they join it.
+    /// Either way they wait in the page's message box, with whatever was typed in the bar.
+    private func attach(_ urls: [URL]) {
+        let draft = panel.model.text
+        panel.model.text = ""
+        prepareSession().attach(urls, draft: draft, inNewChat: !panel.isExpanded)
+        // The drag came from another app, which has the keyboard now.
+        panel.makeKeyAndOrderFront(nil)
+        panel.expand()
+    }
+
     private func hide() {
         guard panel.isVisible else { return }
-        // The conversation stays in DeepSeek's history; get a blank one ready for next time.
-        if panel.isExpanded { session?.startNewChat() }
+        if panel.isExpanded {
+            rememberConversation()
+            // The conversation stays in DeepSeek's history. Unless it's to be reopened, get a
+            // blank one ready for next time.
+            if model.settings.quickChatOpening == .newChat { session?.startNewChat() }
+        }
         panel.dismiss()
         scheduleTeardown()
     }
 
     private func newChat() {
+        lastConversation = nil
         session?.startNewChat()
         panel.collapse()
+    }
+
+    private func rememberConversation() {
+        guard let url = session?.currentURL, LinkPolicy.isAppURL(url), url.path != "/" else { return }
+        lastConversation = url
+    }
+
+    /// The conversation the window showed when it was put away. Kept across launches, and
+    /// only for the account it belongs to.
+    private var lastConversation: URL? {
+        get {
+            let defaults = UserDefaults.standard
+            guard defaults.string(forKey: Key.lastConversationProfile) == profiles.currentID.uuidString else { return nil }
+            return defaults.url(forKey: Key.lastConversation)
+        }
+        set {
+            let defaults = UserDefaults.standard
+            if let newValue {
+                defaults.set(newValue, forKey: Key.lastConversation)
+                defaults.set(profiles.currentID.uuidString, forKey: Key.lastConversationProfile)
+            } else {
+                defaults.removeObject(forKey: Key.lastConversation)
+                defaults.removeObject(forKey: Key.lastConversationProfile)
+            }
+        }
     }
 
     private func openInMainWindow() {
@@ -84,6 +151,7 @@ final class QuickChatController {
     private func prepareSession() -> QuickChatSession {
         if let session { return session }
         let session = QuickChatSession(model: model)
+        session.webView.onFileDrop = { [weak self] in self?.attach($0) }
         self.session = session
         sessionProfileID = profiles.currentID
         return session

@@ -1,5 +1,6 @@
 import AppKit
 import Observation
+import UniformTypeIdentifiers
 import WebKit
 import os
 
@@ -10,7 +11,7 @@ private let log = Logger(subsystem: "com.sink7.DeepSeekNative", category: "Quick
 @MainActor
 @Observable
 final class QuickChatSession: NSObject, WKNavigationDelegate, WKUIDelegate {
-    let webView: WKWebView
+    let webView: QuickChatWebView
     private(set) var hasContent = false
     private(set) var title = "DeepSeek"
     private(set) var pageBackgroundColor: NSColor?
@@ -19,8 +20,16 @@ final class QuickChatSession: NSObject, WKNavigationDelegate, WKUIDelegate {
     @ObservationIgnored private var observations: [NSKeyValueObservation] = []
     /// True while the page is a new chat that nothing has been sent from yet.
     @ObservationIgnored private var isFreshChat = false
-    /// Waits here until the page has loaded.
-    @ObservationIgnored private var pendingPrompt: String?
+    /// Waits here until the new chat has loaded.
+    @ObservationIgnored private var pending: PendingAction?
+
+    private enum PendingAction {
+        case send(String)
+        case attach([[String: String]], draft: String)
+    }
+
+    /// Files bigger than this aren't attached; DeepSeek wouldn't take them either.
+    private static let maxAttachmentBytes = 100 * 1024 * 1024
 
     init(model: WebViewModel) {
         self.model = model
@@ -29,7 +38,7 @@ final class QuickChatSession: NSObject, WKNavigationDelegate, WKUIDelegate {
         configuration.userContentController.addUserScript(WKUserScript(
             source: WebScripts.quickChatStyle, injectionTime: .atDocumentStart, forMainFrameOnly: true
         ))
-        webView = WKWebView(frame: .zero, configuration: configuration)
+        webView = QuickChatWebView(frame: .zero, configuration: configuration)
         super.init()
 
         webView.navigationDelegate = self
@@ -56,13 +65,74 @@ final class QuickChatSession: NSObject, WKNavigationDelegate, WKUIDelegate {
         webView.load(URLRequest(url: LinkPolicy.homeURL))
     }
 
+    /// Opens an earlier conversation.
+    func load(_ url: URL) {
+        isFreshChat = false
+        pending = nil
+        webView.load(URLRequest(url: url))
+    }
+
+    /// Puts the cursor in the page's message box unless something else there has focus.
+    func focusInput() {
+        webView.evaluateJavaScript(WebScripts.focusChatInput, completionHandler: nil)
+    }
+
     /// Sends `text` as the first message of a new chat.
     func send(_ text: String) {
-        if isFreshChat, !webView.isLoading {
-            submit(text)
+        inNewChat(.send(text))
+    }
+
+    /// Adds files to the page's message box through its own upload input, the way choosing
+    /// them with the paperclip would. `draft` goes into the message box after them; nothing
+    /// is sent. With `inNewChat` the files start a new chat, otherwise they join this one.
+    func attach(_ urls: [URL], draft: String, inNewChat newChat: Bool) {
+        let files = urls.compactMap(Self.attachment(for:))
+        guard !files.isEmpty else { return }
+        if newChat {
+            inNewChat(.attach(files, draft: draft))
         } else {
-            pendingPrompt = text
+            perform(.attach(files, draft: draft))
+        }
+    }
+
+    /// Runs `action` on a blank new chat, loading one first unless the page already is one.
+    private func inNewChat(_ action: PendingAction) {
+        if isFreshChat, !webView.isLoading {
+            perform(action)
+        } else {
+            pending = action
             if !webView.isLoading || webView.url?.path != "/" { startNewChat() }
+        }
+    }
+
+    private func perform(_ action: PendingAction) {
+        switch action {
+        case .send(let text): submit(text)
+        case .attach(let files, let draft): attach(files, draft: draft)
+        }
+    }
+
+    private static func attachment(for url: URL) -> [String: String]? {
+        guard url.isFileURL,
+              let size = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize, size <= maxAttachmentBytes,
+              let data = try? Data(contentsOf: url)
+        else {
+            log.error("Skipped attachment \(url.lastPathComponent, privacy: .public)")
+            return nil
+        }
+        let type = UTType(filenameExtension: url.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
+        return ["name": url.lastPathComponent, "type": type, "data": data.base64EncodedString()]
+    }
+
+    private func attach(_ files: [[String: String]], draft: String) {
+        isFreshChat = false
+        webView.callAsyncJavaScript(
+            WebScripts.attachFiles, arguments: ["files": files, "draft": draft], in: nil, in: .page
+        ) { result in
+            switch result {
+            case .success(let status): log.info("Files attached: \(String(describing: status), privacy: .public)")
+            case .failure(let error): log.error("Attaching failed: \(error.localizedDescription, privacy: .public)")
+            }
         }
     }
 
@@ -129,9 +199,9 @@ final class QuickChatSession: NSObject, WKNavigationDelegate, WKUIDelegate {
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         hasContent = true
         isFreshChat = webView.url.map { LinkPolicy.isAppURL($0) && $0.path == "/" } ?? false
-        if let prompt = pendingPrompt {
-            pendingPrompt = nil
-            submit(prompt)
+        if let action = pending {
+            pending = nil
+            perform(action)
         }
     }
 
@@ -167,5 +237,33 @@ final class QuickChatSession: NSObject, WKNavigationDelegate, WKUIDelegate {
         initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping @MainActor ([URL]?) -> Void
     ) {
         WebDialogs.openPanel(parameters: parameters, in: webView.window, completion: completionHandler)
+    }
+}
+
+/// Quick chat's web view. Files dropped on it go to `onFileDrop`, which attaches them through
+/// the page's upload input, instead of depending on the page handling drops itself.
+final class QuickChatWebView: WKWebView {
+    var onFileDrop: (([URL]) -> Void)?
+
+    private func fileURLs(in info: NSDraggingInfo) -> [URL] {
+        let urls = info.draggingPasteboard.readObjects(
+            forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]
+        ) as? [URL]
+        return urls ?? []
+    }
+
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        fileURLs(in: sender).isEmpty || onFileDrop == nil ? super.draggingEntered(sender) : .copy
+    }
+
+    override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        fileURLs(in: sender).isEmpty || onFileDrop == nil ? super.draggingUpdated(sender) : .copy
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        let urls = fileURLs(in: sender)
+        guard !urls.isEmpty, let onFileDrop else { return super.performDragOperation(sender) }
+        onFileDrop(urls)
+        return true
     }
 }

@@ -500,6 +500,16 @@
         }
       }
     },
+    "Drop to Attach": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "松开以添加"
+          }
+        }
+      }
+    },
     "Each account has its own cookies and local storage, so several DeepSeek accounts can stay signed in and you can switch between them at any time.": {
       "localizations": {
         "zh-Hans": {
@@ -690,6 +700,16 @@
         }
       }
     },
+    "Last Conversation": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上次的对话"
+          }
+        }
+      }
+    },
     "Light": {
       "localizations": {
         "zh-Hans": {
@@ -840,12 +860,22 @@
         }
       }
     },
-    "Opens a small input bar over any app. Press ↩ to ask, and the answer appears in a compact window that stays on top. Press the shortcut again to hide it.": {
+    "Opens To": {
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "在任何应用中弹出一个小输入框。按 ↩ 提问，回答会显示在置顶的小窗口中。再按一次快捷键即可隐藏。"
+            "value": "打开时显示"
+          }
+        }
+      }
+    },
+    "Opens a small input bar over any app. Press ↩ to ask, and the answer appears in a compact window that stays on top. Press the shortcut again to hide it. With Last Conversation, the shortcut reopens the conversation you left, and the window's New Chat button starts a new one.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在任何应用中弹出一个小输入框。按 ↩ 提问，回答会显示在置顶的小窗口中。再按一次快捷键即可隐藏。选择“上次的对话”时，按快捷键会重新打开你离开时的对话，点按窗口中的“新对话”按钮可开始新对话。"
           }
         }
       }

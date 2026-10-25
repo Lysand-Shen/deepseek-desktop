@@ -97,10 +97,13 @@ struct ShortcutSettingsView: View {
                 if settings.quickChatHotKey != .defaultSummon {
                     Button(L("Restore Default (\(KeyCombo.defaultSummon.displayString))")) { settings.quickChatHotKey = .defaultSummon }
                 }
+                Picker(L("Opens To"), selection: $settings.quickChatOpening) {
+                    ForEach(QuickChatOpening.allCases) { Text($0.title).tag($0) }
+                }
             } header: {
                 Text(L("Quick Chat"))
             } footer: {
-                Text(L("Opens a small input bar over any app. Press ↩ to ask, and the answer appears in a compact window that stays on top. Press the shortcut again to hide it."))
+                Text(L("Opens a small input bar over any app. Press ↩ to ask, and the answer appears in a compact window that stays on top. Press the shortcut again to hide it. With Last Conversation, the shortcut reopens the conversation you left, and the window's New Chat button starts a new one."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
